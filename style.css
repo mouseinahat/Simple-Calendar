@@ -357,3 +357,38 @@ button {
   .color-dots { gap: 5px; margin-top: 24px; }
   .color-dot, .legend-dot { width: 16px; height: 16px; }
 }
+
+.password-panel {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid #c7d2fe;
+  border-radius: 22px;
+  background: #eef2ff;
+}
+
+.password-panel h2 {
+  margin-bottom: 6px;
+  font-size: 20px;
+}
+
+.password-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.password-row button {
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 18px;
+  background: #4f46e5;
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .password-row {
+    grid-template-columns: 1fr;
+  }
+}

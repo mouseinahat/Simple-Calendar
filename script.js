@@ -12,12 +12,12 @@ import {
 // Replace this object with your own Firebase Web App config.
 // If Step 5 already worked, copy the same firebaseConfig from your Step 5 script.js.
 const firebaseConfig = {
-  apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
-  authDomain: "simple-calendar-46931.firebaseapp.com",
-  projectId: "simple-calendar-46931",
-  storageBucket: "simple-calendar-46931.firebasestorage.app",
-  messagingSenderId: "188294863466",
-  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -29,8 +29,10 @@ const prevMonthBtn = document.getElementById("prevMonthBtn");
 const nextMonthBtn = document.getElementById("nextMonthBtn");
 const userNameInput = document.getElementById("userName");
 const userColorInput = document.getElementById("userColor");
-const roomIdInput = document.getElementById("roomId");
+const roomLinkInput = document.getElementById("roomLinkInput");
 const roomPasswordInput = document.getElementById("roomPassword");
+const passwordPanel = document.getElementById("passwordPanel");
+const unlockRoomBtn = document.getElementById("unlockRoomBtn");
 const newRoomTitleInput = document.getElementById("newRoomTitle");
 const newRoomPasswordInput = document.getElementById("newRoomPassword");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -58,7 +60,7 @@ let isRoomUnlocked = false;
 let currentRoomData = null;
 
 const urlParams = new URLSearchParams(window.location.search);
-const roomFromUrl = sanitizeRoomId(urlParams.get("room")) || "default-room";
+const roomFromUrl = sanitizeRoomId(urlParams.get("room")) || "";
 
 let myProfile = JSON.parse(localStorage.getItem("simpleCalendarProfile")) || {
   id: crypto.randomUUID(),
@@ -76,7 +78,6 @@ function showError(action, error) {
 
 userNameInput.value = myProfile.name || "";
 userColorInput.value = myProfile.color || "#4f46e5";
-roomIdInput.value = currentRoomId;
 
 function pad(number) {
   return String(number).padStart(2, "0");
@@ -93,8 +94,23 @@ function sanitizeRoomId(value) {
     .slice(0, 80);
 }
 
-function createRandomRoomId() {
+function createRandomRoomId(title = "") {
+  // Room IDs are independent from the room title, so duplicate titles never collide.
+  // crypto.randomUUID() creates a practically unguessable ID for shared links.
   return crypto.randomUUID();
+}
+
+function extractRoomIdFromLink(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  try {
+    const parsedUrl = new URL(raw);
+    return sanitizeRoomId(parsedUrl.searchParams.get("room"));
+  } catch {
+    // If a user pastes only the UUID by mistake, still support it.
+    return sanitizeRoomId(raw);
+  }
 }
 
 function getDateKey(year, monthIndex, day) {
@@ -122,8 +138,7 @@ function getRoomUrl(roomId = currentRoomId) {
 function updateRoomDisplay() {
   const title = currentRoomData?.title ? ` — ${currentRoomData.title}` : "";
   currentRoomLabel.textContent = `${currentRoomId}${title}`;
-  roomIdInput.value = currentRoomId;
-  roomLink.textContent = getRoomUrl(currentRoomId);
+    roomLink.textContent = getRoomUrl(currentRoomId);
 }
 
 function setLockedUI(message = "Enter the correct room password to view and edit this calendar.") {
@@ -137,6 +152,11 @@ function setLockedUI(message = "Enter the correct room password to view and edit
   legendSection.classList.add("hidden");
   recommendationSection.classList.add("hidden");
   userControls.classList.add("hidden");
+  if (currentRoomId) {
+    passwordPanel.classList.remove("hidden");
+  } else {
+    passwordPanel.classList.add("hidden");
+  }
   lockedNotice.classList.remove("hidden");
   lockedNotice.textContent = message;
   statusMessage.textContent = message;
@@ -150,6 +170,7 @@ function setUnlockedUI() {
   legendSection.classList.remove("hidden");
   recommendationSection.classList.remove("hidden");
   userControls.classList.remove("hidden");
+  passwordPanel.classList.add("hidden");
   lockedNotice.classList.add("hidden");
 }
 
@@ -209,7 +230,7 @@ async function createRoom() {
     createRoomBtn.textContent = "Creating...";
     statusMessage.textContent = "Creating room...";
 
-    const newRoomId = createRandomRoomId();
+    const newRoomId = createRandomRoomId(title);
     currentRoomId = newRoomId;
     currentRoomData = {
       id: newRoomId,
@@ -244,7 +265,7 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     const enteredPassword = String(password || "").trim();
 
     if (!cleanedRoomId) {
-      statusMessage.textContent = "Please enter a room ID.";
+      statusMessage.textContent = "Please open a valid room link first.";
       return;
     }
 
@@ -524,8 +545,27 @@ copyRoomLinkBtn.addEventListener("click", async () => {
   }
 });
 
-openRoomBtn.addEventListener("click", async () => {
-  await unlockRoom(roomIdInput.value, roomPasswordInput.value, true);
+openRoomBtn.addEventListener("click", () => {
+  const pastedRoomId = extractRoomIdFromLink(roomLinkInput.value);
+
+  if (!pastedRoomId) {
+    statusMessage.textContent = "Paste a valid shared room link first.";
+    roomLinkInput.focus();
+    return;
+  }
+
+  currentRoomId = pastedRoomId;
+  currentRoomData = null;
+  users = [];
+  updateRoomDisplay();
+  window.history.pushState({}, "", getRoomUrl(currentRoomId));
+  setLockedUI("Room link opened. Enter the room password to continue.");
+  roomPasswordInput.value = "";
+  roomPasswordInput.focus();
+});
+
+unlockRoomBtn.addEventListener("click", async () => {
+  await unlockRoom(currentRoomId, roomPasswordInput.value, true);
 });
 
 saveProfileBtn.addEventListener("click", async () => {
@@ -560,15 +600,10 @@ clearMyDatesBtn.addEventListener("click", async () => {
   statusMessage.textContent = "Your selected dates were cleared.";
 });
 
-roomIdInput.addEventListener("keydown", async (event) => {
-  if (event.key === "Enter") {
-    await unlockRoom(roomIdInput.value, roomPasswordInput.value, true);
-  }
-});
 
 roomPasswordInput.addEventListener("keydown", async (event) => {
   if (event.key === "Enter") {
-    await unlockRoom(roomIdInput.value, roomPasswordInput.value, true);
+    await unlockRoom(currentRoomId, roomPasswordInput.value, true);
   }
 });
 
@@ -597,13 +632,16 @@ nextMonthBtn.addEventListener("click", () => {
 
 window.addEventListener("popstate", async () => {
   const params = new URLSearchParams(window.location.search);
-  const roomId = sanitizeRoomId(params.get("room")) || "default-room";
+  const roomId = sanitizeRoomId(params.get("room")) || "";
   currentRoomId = roomId;
   updateRoomDisplay();
-  setLockedUI("Enter the room password again to continue.");
+  setLockedUI(roomId ? "Enter the room password again to continue." : "Create a room or open a shared room link.");
 });
 
+if (currentRoomId) {
+  roomLinkInput.value = getRoomUrl(currentRoomId);
+}
 updateRoomDisplay();
-setLockedUI("Enter the room password, or create a new room.");
+setLockedUI(currentRoomId ? "Enter the room password to open this room." : "Create a room or open a shared room link.");
 renderCalendar();
 renderBestDates();

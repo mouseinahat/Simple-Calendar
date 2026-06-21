@@ -42,21 +42,29 @@
         </section>
 
         <section class="mini-card">
-          <h2>Open Room</h2>
+          <h2>Open via link</h2>
           <label>
-            Room ID
-            <input id="roomId" type="text" value="default-room" />
+            Shared room link
+            <input id="roomLinkInput" type="url" placeholder="https://mouseinahat.github.io/Simple-Calendar/?room=..." />
           </label>
+          <button id="openRoomBtn" type="button">Open via link</button>
+        </section>
+      </div>
+
+      <div id="passwordPanel" class="password-panel hidden">
+        <h2>Enter Room Password</h2>
+        <p class="subtitle">This room link is valid. Enter the room password to open the calendar.</p>
+        <div class="password-row">
           <label>
             Room password
             <input id="roomPassword" type="password" placeholder="Enter room password" />
           </label>
-          <button id="openRoomBtn" type="button">Unlock Room</button>
-        </section>
+          <button id="unlockRoomBtn" type="button">Unlock Calendar</button>
+        </div>
       </div>
 
       <div id="lockedNotice" class="locked-notice">
-        Enter the correct room password to view and edit this calendar.
+        Create a room or open a shared room link.
       </div>
 
       <div id="userControls" class="hidden">
