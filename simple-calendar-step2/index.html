@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Calendar - Step 2</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <section class="calendar-card">
+      <header class="calendar-header">
+        <div>
+          <p class="eyebrow">Simple Calendar</p>
+          <h1 id="monthTitle">Month Year</h1>
+        </div>
+
+        <div class="calendar-controls">
+          <button id="prevMonth" type="button" aria-label="Previous month">‹</button>
+          <input id="monthPicker" type="month" aria-label="Select month" />
+          <button id="nextMonth" type="button" aria-label="Next month">›</button>
+        </div>
+      </header>
+
+      <section class="user-panel" aria-label="User settings">
+        <label>
+          <span>Your name</span>
+          <input id="userName" type="text" placeholder="e.g. Siwon" maxlength="24" />
+        </label>
+
+        <label>
+          <span>Your color</span>
+          <input id="userColor" type="color" value="#4f46e5" />
+        </label>
+
+        <p id="userHint" class="user-hint">Enter your name, choose a color, then click dates.</p>
+      </section>
+
+      <div class="weekday-row" aria-hidden="true">
+        <span>Sun</span>
+        <span>Mon</span>
+        <span>Tue</span>
+        <span>Wed</span>
+        <span>Thu</span>
+        <span>Fri</span>
+        <span>Sat</span>
+      </div>
+
+      <div id="calendarGrid" class="calendar-grid" aria-label="Monthly calendar"></div>
+
+      <footer class="selection-panel">
+        <div>
+          <h2>Selected dates</h2>
+          <p id="selectedCount">0 dates selected</p>
+        </div>
+        <button id="clearSelection" type="button">Clear my dates</button>
+      </footer>
+
+      <ul id="selectedDates" class="selected-dates"></ul>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
