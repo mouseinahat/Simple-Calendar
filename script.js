@@ -30,6 +30,7 @@ window.addEventListener("unhandledrejection", (event) => {
   if (status) status.textContent = `Firebase/Promise 오류: ${event.reason?.message || event.reason}`;
 });
 
+assertFirebaseConfig();
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -168,7 +169,34 @@ const translations = {
 function showError(action, error) {
   console.error(action, error);
   const message = error?.message || String(error || "Unknown error");
-  statusMessage.textContent = `${action} 실패: ${message}`;
+  statusMessage.textContent = `${action} 실패: ${message} ${firebaseHelpText ? " | " + firebaseHelpText() : ""}`;
+}
+
+function withTimeout(promise, label, milliseconds = 12000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`${label} 요청 시간이 초과되었습니다. Firebase API 제한, Firestore Rules, 네트워크, 또는 Firebase 설정값을 확인해주세요.`));
+      }, milliseconds);
+    })
+  ]);
+}
+
+function assertFirebaseConfig() {
+  const missing = Object.entries(firebaseConfig)
+    .filter(([, value]) => !value || String(value).includes("YOUR_"))
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    throw new Error(`Firebase 설정값이 아직 비어 있습니다: ${missing.join(", ")}`);
+  }
+}
+
+function firebaseHelpText() {
+  return currentLanguage === "ko"
+    ? "Firebase 연결을 확인하세요: 1) Google Cloud API Key 웹사이트 제한에 https://mouseinahat.github.io/* 와 https://mouseinahat.github.io/Simple-Calendar/* 추가 2) API 제한에 Cloud Firestore API 허용 3) Firestore Rules가 개발 중 read/write 허용인지 확인"
+    : "Check Firebase: 1) Add https://mouseinahat.github.io/* and https://mouseinahat.github.io/Simple-Calendar/* to API key website restrictions 2) Allow Cloud Firestore API 3) Check Firestore Rules during development.";
 }
 
 userNameInput.value = myProfile.name || "";
@@ -479,13 +507,13 @@ async function createRoom() {
       password
     };
 
-    await setDoc(getRoomDocRef(newRoomId), {
+    await withTimeout(setDoc(getRoomDocRef(newRoomId), {
       id: newRoomId,
       title,
       password,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    });
+    }), "방 생성");
 
     roomPasswordInput.value = password;
     newRoomPasswordInput.value = "";
@@ -519,7 +547,7 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     }
 
     statusMessage.textContent = "방 비밀번호를 확인하는 중입니다...";
-    const roomSnapshot = await getDoc(getRoomDocRef());
+    const roomSnapshot = await withTimeout(getDoc(getRoomDocRef()), "방 비밀번호 확인");
 
     if (!roomSnapshot.exists()) {
       setLockedUI("방을 찾을 수 없습니다. 새 방을 만들거나 링크를 확인해주세요.");

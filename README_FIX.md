@@ -1,15 +1,12 @@
-# Simple Calendar Step 8 v0.8.1 Fix
+# Step 8 v0.8.2 Firestore Timeout Fix
 
-This version fixes the broken Step 8 UI by aligning the HTML element IDs with the JavaScript translation and event-binding code.
+This release adds explicit Firebase config validation and 12-second timeouts around room creation and password checks.
 
-## Important
-Before uploading, open `script.js` and replace the `firebaseConfig` object with your Firebase config.
+If the app stops at "방을 생성하는 중입니다" or "방 비밀번호를 확인하는 중입니다", it will now show a concrete Firebase troubleshooting message instead of hanging forever.
 
-Then upload these files to the repository root:
-
-- `index.html`
-- `style.css`
-- `script.js`
-- `README_FIX.md`
-
-If buttons still do not work, check the status message at the bottom of the page. This version prints JavaScript/Firebase errors there.
+Common causes:
+- Firebase config was not pasted into `script.js`.
+- Google Cloud API key website restrictions do not include `https://mouseinahat.github.io/*` and `https://mouseinahat.github.io/Simple-Calendar/*`.
+- API restrictions do not allow Cloud Firestore API.
+- Firestore Database was not created.
+- Firestore Rules block read/write during development.
