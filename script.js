@@ -73,7 +73,7 @@ let currentRoomId = roomFromUrl;
 function showError(action, error) {
   console.error(action, error);
   const message = error?.message || String(error || "Unknown error");
-  statusMessage.textContent = `${action} failed: ${message}`;
+  statusMessage.textContent = `${action} 실패: ${message}`;
 }
 
 userNameInput.value = myProfile.name || "";
@@ -136,12 +136,18 @@ function getRoomUrl(roomId = currentRoomId) {
 }
 
 function updateRoomDisplay() {
+  if (!currentRoomId) {
+    currentRoomLabel.textContent = "방 없음";
+    roomLink.textContent = "";
+    return;
+  }
+
   const title = currentRoomData?.title ? ` — ${currentRoomData.title}` : "";
   currentRoomLabel.textContent = `${currentRoomId}${title}`;
-    roomLink.textContent = getRoomUrl(currentRoomId);
+  roomLink.textContent = getRoomUrl(currentRoomId);
 }
 
-function setLockedUI(message = "Enter the correct room password to view and edit this calendar.") {
+function setLockedUI(message = "달력을 보고 수정하려면 올바른 방 비밀번호를 입력하세요.") {
   isRoomUnlocked = false;
   users = [];
   currentRoomData = null;
@@ -183,14 +189,14 @@ function saveProfileLocally() {
 async function saveProfileToFirestore(extraDates = null) {
   try {
   if (!isRoomUnlocked) {
-    statusMessage.textContent = "Unlock the room before saving.";
+    statusMessage.textContent = "저장하기 전에 방을 먼저 열어주세요.";
     return;
   }
 
   saveProfileLocally();
 
   if (!myProfile.name) {
-    statusMessage.textContent = "Please enter your name first.";
+    statusMessage.textContent = "이름을 먼저 입력해주세요.";
     return;
   }
 
@@ -209,26 +215,26 @@ async function saveProfileToFirestore(extraDates = null) {
     { merge: true }
   );
 
-  statusMessage.textContent = "Saved.";
+  statusMessage.textContent = "저장되었습니다.";
   } catch (error) {
-    showError("Save profile", error);
+    showError("프로필 저장", error);
   }
 }
 
 async function createRoom() {
   try {
     const password = newRoomPasswordInput.value.trim();
-    const title = newRoomTitleInput.value.trim() || "Untitled Room";
+    const title = newRoomTitleInput.value.trim() || "제목 없는 방";
 
     if (!password) {
-      statusMessage.textContent = "Please set a room password.";
+      statusMessage.textContent = "방 비밀번호를 설정해주세요.";
       newRoomPasswordInput.focus();
       return;
     }
 
     createRoomBtn.disabled = true;
-    createRoomBtn.textContent = "Creating...";
-    statusMessage.textContent = "Creating room...";
+    createRoomBtn.textContent = "생성 중...";
+    statusMessage.textContent = "방을 생성하는 중입니다...";
 
     const newRoomId = createRandomRoomId(title);
     currentRoomId = newRoomId;
@@ -250,12 +256,12 @@ async function createRoom() {
     newRoomPasswordInput.value = "";
     newRoomTitleInput.value = "";
     await unlockRoom(newRoomId, password, true);
-    statusMessage.textContent = "New password-protected room created. Share the room link and password.";
+    statusMessage.textContent = "비밀번호가 있는 새 방이 만들어졌습니다. 방 링크와 비밀번호를 공유하세요.";
   } catch (error) {
-    showError("Create room", error);
+    showError("방 만들기", error);
   } finally {
     createRoomBtn.disabled = false;
-    createRoomBtn.textContent = "Create New Room";
+    createRoomBtn.textContent = "새 방 만들기";
   }
 }
 
@@ -265,7 +271,7 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     const enteredPassword = String(password || "").trim();
 
     if (!cleanedRoomId) {
-      statusMessage.textContent = "Please open a valid room link first.";
+      statusMessage.textContent = "올바른 방 링크를 먼저 열어주세요.";
       return;
     }
 
@@ -277,11 +283,11 @@ async function unlockRoom(roomId, password, updateUrl = true) {
       window.history.pushState({}, "", newUrl);
     }
 
-    statusMessage.textContent = "Checking room password...";
+    statusMessage.textContent = "방 비밀번호를 확인하는 중입니다...";
     const roomSnapshot = await getDoc(getRoomDocRef());
 
     if (!roomSnapshot.exists()) {
-      setLockedUI("Room not found. Create a new room or check the link.");
+      setLockedUI("방을 찾을 수 없습니다. 새 방을 만들거나 링크를 확인해주세요.");
       return;
     }
 
@@ -289,7 +295,7 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     const actualPassword = String(roomData.password || "");
 
     if (!enteredPassword || enteredPassword !== actualPassword) {
-      setLockedUI("Wrong password or missing password. Please try again.");
+      setLockedUI("비밀번호가 틀렸거나 입력되지 않았습니다. 다시 시도해주세요.");
       roomPasswordInput.focus();
       return;
     }
@@ -305,12 +311,12 @@ async function unlockRoom(roomId, password, updateUrl = true) {
       renderLegend();
       renderBestDates();
     }, (error) => {
-      showError("Realtime sync", error);
+      showError("실시간 동기화", error);
     });
 
-    statusMessage.textContent = `Unlocked room: ${currentRoomId}`;
+    statusMessage.textContent = `열린 방: ${currentRoomId}`;
   } catch (error) {
-    showError("Unlock room", error);
+    showError("방 열기", error);
   }
 }
 
@@ -325,7 +331,7 @@ function getAvailabilityByDate() {
       }
       availability[date].push({
         id: user.id,
-        name: user.name || "Unnamed",
+        name: user.name || "이름 없음",
         color: user.color || "#64748b"
       });
     });
@@ -336,7 +342,7 @@ function getAvailabilityByDate() {
 
 function formatDateLabel(dateKey) {
   const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+  return new Date(year, month - 1, day).toLocaleDateString("ko-KR", {
     month: "long",
     day: "numeric"
   });
@@ -365,7 +371,7 @@ function renderBestDates() {
     .slice(0, 10);
 
   if (rankedDates.length === 0) {
-    bestDatesList.innerHTML = `<li class="empty-recommendation">No available dates have been selected for this month yet.</li>`;
+    bestDatesList.innerHTML = `<li class="empty-recommendation">이번 달에는 아직 선택된 가능 날짜가 없습니다.</li>`;
     return;
   }
 
@@ -380,7 +386,7 @@ function renderBestDates() {
     dateLabel.textContent = formatDateLabel(dateKey);
 
     const countLabel = document.createElement("span");
-    countLabel.textContent = `${people.length} ${people.length === 1 ? "person" : "people"} available`;
+    countLabel.textContent = `${people.length}명 가능`;
 
     header.appendChild(dateLabel);
     header.appendChild(countLabel);
@@ -406,7 +412,7 @@ function renderLegend() {
   legendList.innerHTML = "";
 
   if (users.length === 0) {
-    legendList.innerHTML = `<p class="status">No users in this room yet.</p>`;
+    legendList.innerHTML = `<p class="status">아직 이 방에 참여자가 없습니다.</p>`;
     return;
   }
 
@@ -430,9 +436,9 @@ function renderLegend() {
 function renderCalendar() {
   calendarGrid.innerHTML = "";
 
-  const monthName = new Date(currentYear, currentMonth).toLocaleString("en-US", {
-    month: "long",
-    year: "numeric"
+  const monthName = new Date(currentYear, currentMonth).toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "long"
   });
   monthLabel.textContent = monthName;
 
@@ -504,14 +510,14 @@ function renderCalendar() {
 
     dayCell.addEventListener("click", async () => {
       if (!isRoomUnlocked) {
-        statusMessage.textContent = "Unlock the room before selecting dates.";
+        statusMessage.textContent = "날짜를 선택하기 전에 방을 먼저 열어주세요.";
         return;
       }
 
       saveProfileLocally();
 
       if (!myProfile.name) {
-        statusMessage.textContent = "Enter your name before selecting dates.";
+        statusMessage.textContent = "날짜를 선택하기 전에 이름을 입력해주세요.";
         userNameInput.focus();
         return;
       }
@@ -535,13 +541,18 @@ function renderCalendar() {
 createRoomBtn.addEventListener("click", createRoom);
 
 copyRoomLinkBtn.addEventListener("click", async () => {
+  if (!currentRoomId) {
+    statusMessage.textContent = "복사할 방 링크가 없습니다. 먼저 방을 만들거나 링크를 열어주세요.";
+    return;
+  }
+
   const link = getRoomUrl(currentRoomId);
   try {
     await navigator.clipboard.writeText(link);
-    statusMessage.textContent = "Room link copied. Share the password separately.";
+    statusMessage.textContent = "방 링크가 복사되었습니다. 비밀번호는 따로 공유하세요.";
   } catch (error) {
     roomLink.textContent = link;
-    statusMessage.textContent = "Could not auto-copy. Manually copy the room link shown above.";
+    statusMessage.textContent = "자동 복사에 실패했습니다. 위에 표시된 방 링크를 직접 복사해주세요.";
   }
 });
 
@@ -549,7 +560,7 @@ openRoomBtn.addEventListener("click", () => {
   const pastedRoomId = extractRoomIdFromLink(roomLinkInput.value);
 
   if (!pastedRoomId) {
-    statusMessage.textContent = "Paste a valid shared room link first.";
+    statusMessage.textContent = "올바른 공유 방 링크를 먼저 붙여넣어주세요.";
     roomLinkInput.focus();
     return;
   }
@@ -559,7 +570,7 @@ openRoomBtn.addEventListener("click", () => {
   users = [];
   updateRoomDisplay();
   window.history.pushState({}, "", getRoomUrl(currentRoomId));
-  setLockedUI("Room link opened. Enter the room password to continue.");
+  setLockedUI("방 링크가 열렸습니다. 계속하려면 방 비밀번호를 입력하세요.");
   roomPasswordInput.value = "";
   roomPasswordInput.focus();
 });
@@ -574,14 +585,14 @@ saveProfileBtn.addEventListener("click", async () => {
 
 clearMyDatesBtn.addEventListener("click", async () => {
   if (!isRoomUnlocked) {
-    statusMessage.textContent = "Unlock the room before clearing dates.";
+    statusMessage.textContent = "날짜를 지우기 전에 방을 먼저 열어주세요.";
     return;
   }
 
   saveProfileLocally();
 
   if (!myProfile.name) {
-    statusMessage.textContent = "Please enter your name first.";
+    statusMessage.textContent = "이름을 먼저 입력해주세요.";
     return;
   }
 
@@ -597,7 +608,7 @@ clearMyDatesBtn.addEventListener("click", async () => {
     { merge: true }
   );
 
-  statusMessage.textContent = "Your selected dates were cleared.";
+  statusMessage.textContent = "내가 선택한 날짜가 모두 지워졌습니다.";
 });
 
 
@@ -635,13 +646,13 @@ window.addEventListener("popstate", async () => {
   const roomId = sanitizeRoomId(params.get("room")) || "";
   currentRoomId = roomId;
   updateRoomDisplay();
-  setLockedUI(roomId ? "Enter the room password again to continue." : "Create a room or open a shared room link.");
+  setLockedUI(roomId ? "계속하려면 방 비밀번호를 다시 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
 });
 
 if (currentRoomId) {
   roomLinkInput.value = getRoomUrl(currentRoomId);
 }
 updateRoomDisplay();
-setLockedUI(currentRoomId ? "Enter the room password to open this room." : "Create a room or open a shared room link.");
+setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
 renderCalendar();
 renderBestDates();

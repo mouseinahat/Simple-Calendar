@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,115 +8,112 @@
 </head>
 <body>
   <main class="app">
-    <section class="panel user-panel">
-      <div class="title-row">
-        <div>
-          <h1>Simple Calendar</h1>
-          <p class="subtitle">Create a password-protected room, share the link, and mark available dates together.</p>
-        </div>
+    <section class="hero-panel">
+      <div>
+        <p class="eyebrow">Simple Calendar</p>
+        <h1>모임 날짜를 함께 고르는 공유 달력</h1>
+        <p class="subtitle">방을 만들고 링크와 비밀번호를 공유하세요. 각자 가능한 날짜를 자기 색으로 표시하면 가장 많이 겹치는 날짜를 바로 볼 수 있습니다.</p>
       </div>
+    </section>
 
+    <section class="panel control-panel">
       <div class="room-box">
         <div>
-          <p class="eyebrow">Current Room</p>
-          <h2 id="currentRoomLabel">default-room</h2>
+          <p class="eyebrow">현재 방</p>
+          <h2 id="currentRoomLabel">방 없음</h2>
           <p id="roomLink" class="room-link"></p>
         </div>
         <div class="room-actions">
-          <button id="copyRoomLinkBtn" type="button" class="secondary">Copy Room Link</button>
+          <button id="copyRoomLinkBtn" type="button" class="secondary">방 링크 복사</button>
         </div>
       </div>
 
       <div class="setup-grid">
         <section class="mini-card">
-          <h2>Create Room</h2>
+          <h2>새 방 만들기</h2>
           <label>
-            Room title
-            <input id="newRoomTitle" type="text" placeholder="친구 모임" />
+            방 제목
+            <input id="newRoomTitle" type="text" placeholder="예: 7월 친구 모임" />
           </label>
           <label>
-            Room password
-            <input id="newRoomPassword" type="password" placeholder="Set a password" />
+            방 비밀번호
+            <input id="newRoomPassword" type="password" placeholder="비밀번호 설정" />
           </label>
-          <button id="createRoomBtn" type="button">Create New Room</button>
+          <button id="createRoomBtn" type="button">새 방 만들기</button>
         </section>
 
         <section class="mini-card">
-          <h2>Open via link</h2>
+          <h2>링크로 열기</h2>
           <label>
-            Shared room link
+            공유받은 방 링크
             <input id="roomLinkInput" type="url" placeholder="https://mouseinahat.github.io/Simple-Calendar/?room=..." />
           </label>
-          <button id="openRoomBtn" type="button">Open via link</button>
+          <button id="openRoomBtn" type="button">링크 열기</button>
         </section>
       </div>
 
       <div id="passwordPanel" class="password-panel hidden">
-        <h2>Enter Room Password</h2>
-        <p class="subtitle">This room link is valid. Enter the room password to open the calendar.</p>
+        <h2>방 비밀번호 입력</h2>
+        <p class="subtitle">공유받은 방 링크가 확인되었습니다. 비밀번호를 입력하면 달력을 볼 수 있습니다.</p>
         <div class="password-row">
           <label>
-            Room password
-            <input id="roomPassword" type="password" placeholder="Enter room password" />
+            방 비밀번호
+            <input id="roomPassword" type="password" placeholder="비밀번호 입력" />
           </label>
-          <button id="unlockRoomBtn" type="button">Unlock Calendar</button>
+          <button id="unlockRoomBtn" type="button">달력 열기</button>
         </div>
       </div>
 
-      <div id="lockedNotice" class="locked-notice">
-        Create a room or open a shared room link.
-      </div>
+      <div id="lockedNotice" class="locked-notice">새 방을 만들거나 공유받은 링크를 열어주세요.</div>
 
-      <div id="userControls" class="hidden">
+      <div id="userControls" class="profile-card hidden">
         <div class="form-grid two-columns">
           <label>
-            Your name
-            <input id="userName" type="text" placeholder="Enter your name" />
+            내 이름
+            <input id="userName" type="text" placeholder="이름 입력" />
           </label>
-
           <label>
-            Your color
+            내 색상
             <input id="userColor" type="color" value="#4f46e5" />
           </label>
         </div>
-
         <div class="actions">
-          <button id="saveProfileBtn" type="button">Save Profile</button>
-          <button id="clearMyDatesBtn" type="button" class="secondary">Clear My Dates</button>
+          <button id="saveProfileBtn" type="button">프로필 저장</button>
+          <button id="clearMyDatesBtn" type="button" class="secondary">내 날짜 모두 지우기</button>
         </div>
       </div>
 
-      <p id="statusMessage" class="status">Create a room or unlock an existing room.</p>
+      <p id="statusMessage" class="status">방을 만들거나 기존 방을 열어주세요.</p>
     </section>
 
     <section id="calendarSection" class="calendar-card hidden">
       <header class="calendar-header">
-        <button id="prevMonthBtn" class="nav-btn" aria-label="Previous month">‹</button>
-        <h2 id="monthLabel">Month Year</h2>
-        <button id="nextMonthBtn" class="nav-btn" aria-label="Next month">›</button>
+        <button id="prevMonthBtn" class="nav-btn" aria-label="이전 달">‹</button>
+        <h2 id="monthLabel">월 년도</h2>
+        <button id="nextMonthBtn" class="nav-btn" aria-label="다음 달">›</button>
       </header>
 
       <div class="weekdays">
-        <div>Sun</div>
-        <div>Mon</div>
-        <div>Tue</div>
-        <div>Wed</div>
-        <div>Thu</div>
-        <div>Fri</div>
-        <div>Sat</div>
+        <div>일</div>
+        <div>월</div>
+        <div>화</div>
+        <div>수</div>
+        <div>목</div>
+        <div>금</div>
+        <div>토</div>
       </div>
 
       <div id="calendarGrid" class="calendar-grid"></div>
     </section>
 
     <section id="recommendationSection" class="panel recommendation-panel hidden">
-      <h2>Best dates</h2>
-      <p class="subtitle">Dates with the highest number of available people are highlighted in yellow on the calendar.</p>
+      <h2>추천 날짜</h2>
+      <p class="subtitle">가장 많은 사람이 가능한 날짜는 달력에서 노란색으로 강조됩니다.</p>
       <ol id="bestDatesList" class="best-dates-list"></ol>
     </section>
 
     <section id="legendSection" class="panel legend-panel hidden">
-      <h2>People in this room</h2>
+      <h2>참여자 색상</h2>
       <div id="legendList" class="legend-list"></div>
     </section>
   </main>
