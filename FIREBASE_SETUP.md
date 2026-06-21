@@ -59,3 +59,8 @@ FIREBASE_SETUP.md
 ```
 
 Then enable GitHub Pages from the `main` branch and `/root` folder.
+
+
+## Step 7 Note
+
+This version adds a Best Dates panel. It counts all users in the current room, ranks the dates in the currently displayed month, highlights the dates with the highest availability, and displays the available user names for each ranked date.

@@ -12,12 +12,12 @@ import {
 // Replace this object with your own Firebase Web App config.
 // If Step 5 already worked, copy the same firebaseConfig from your Step 5 script.js.
 const firebaseConfig = {
-  apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
-  authDomain: "simple-calendar-46931.firebaseapp.com",
-  projectId: "simple-calendar-46931",
-  storageBucket: "simple-calendar-46931.firebasestorage.app",
-  messagingSenderId: "188294863466",
-  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -44,6 +44,8 @@ const copyRoomLinkBtn = document.getElementById("copyRoomLinkBtn");
 const openRoomBtn = document.getElementById("openRoomBtn");
 const calendarSection = document.getElementById("calendarSection");
 const legendSection = document.getElementById("legendSection");
+const recommendationSection = document.getElementById("recommendationSection");
+const bestDatesList = document.getElementById("bestDatesList");
 const userControls = document.getElementById("userControls");
 const lockedNotice = document.getElementById("lockedNotice");
 
@@ -127,6 +129,7 @@ function setLockedUI(message = "Enter the correct room password to view and edit
 
   calendarSection.classList.add("hidden");
   legendSection.classList.add("hidden");
+  recommendationSection.classList.add("hidden");
   userControls.classList.add("hidden");
   lockedNotice.classList.remove("hidden");
   lockedNotice.textContent = message;
@@ -139,6 +142,7 @@ function setUnlockedUI() {
   isRoomUnlocked = true;
   calendarSection.classList.remove("hidden");
   legendSection.classList.remove("hidden");
+  recommendationSection.classList.remove("hidden");
   userControls.classList.remove("hidden");
   lockedNotice.classList.add("hidden");
 }
@@ -255,9 +259,98 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     users = snapshot.docs.map((document) => document.data());
     renderCalendar();
     renderLegend();
+    renderBestDates();
   });
 
   statusMessage.textContent = `Unlocked room: ${currentRoomId}`;
+}
+
+
+function getAvailabilityByDate() {
+  const availability = {};
+
+  users.forEach((user) => {
+    (user.dates || []).forEach((date) => {
+      if (!availability[date]) {
+        availability[date] = [];
+      }
+      availability[date].push({
+        id: user.id,
+        name: user.name || "Unnamed",
+        color: user.color || "#64748b"
+      });
+    });
+  });
+
+  return availability;
+}
+
+function formatDateLabel(dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric"
+  });
+}
+
+function renderBestDates() {
+  bestDatesList.innerHTML = "";
+
+  if (!isRoomUnlocked) {
+    return;
+  }
+
+  const availability = getAvailabilityByDate();
+  const rankedDates = Object.entries(availability)
+    .filter(([dateKey]) => {
+      const [year, month] = dateKey.split("-").map(Number);
+      return year === currentYear && month === currentMonth + 1;
+    })
+    .map(([dateKey, people]) => ({ dateKey, people }))
+    .sort((a, b) => {
+      if (b.people.length !== a.people.length) {
+        return b.people.length - a.people.length;
+      }
+      return a.dateKey.localeCompare(b.dateKey);
+    })
+    .slice(0, 10);
+
+  if (rankedDates.length === 0) {
+    bestDatesList.innerHTML = `<li class="empty-recommendation">No available dates have been selected for this month yet.</li>`;
+    return;
+  }
+
+  rankedDates.forEach(({ dateKey, people }) => {
+    const item = document.createElement("li");
+    item.className = "best-date-item";
+
+    const header = document.createElement("div");
+    header.className = "best-date-header";
+
+    const dateLabel = document.createElement("strong");
+    dateLabel.textContent = formatDateLabel(dateKey);
+
+    const countLabel = document.createElement("span");
+    countLabel.textContent = `${people.length} ${people.length === 1 ? "person" : "people"} available`;
+
+    header.appendChild(dateLabel);
+    header.appendChild(countLabel);
+
+    const names = document.createElement("div");
+    names.className = "best-date-names";
+
+    people.forEach((person) => {
+      const pill = document.createElement("span");
+      pill.className = "name-pill";
+      pill.style.setProperty("--pill-color", person.color);
+      pill.textContent = person.name;
+      names.appendChild(pill);
+    });
+
+    item.appendChild(header);
+    item.appendChild(names);
+    bestDatesList.appendChild(item);
+  });
 }
 
 function renderLegend() {
@@ -303,14 +396,19 @@ function renderCalendar() {
     calendarGrid.appendChild(emptyCell);
   }
 
-  const dateCounts = {};
-  users.forEach((user) => {
-    (user.dates || []).forEach((date) => {
-      dateCounts[date] = (dateCounts[date] || 0) + 1;
-    });
-  });
+  const availability = getAvailabilityByDate();
+  const dateCounts = Object.fromEntries(
+    Object.entries(availability).map(([date, people]) => [date, people.length])
+  );
 
-  const maxCount = Math.max(0, ...Object.values(dateCounts));
+  const currentMonthCounts = Object.entries(dateCounts)
+    .filter(([dateKey]) => {
+      const [year, month] = dateKey.split("-").map(Number);
+      return year === currentYear && month === currentMonth + 1;
+    })
+    .map(([, count]) => count);
+
+  const maxCount = Math.max(0, ...currentMonthCounts);
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateKey = getDateKey(currentYear, currentMonth, day);
@@ -451,6 +549,7 @@ prevMonthBtn.addEventListener("click", () => {
     currentYear -= 1;
   }
   renderCalendar();
+  renderBestDates();
 });
 
 nextMonthBtn.addEventListener("click", () => {
@@ -460,6 +559,7 @@ nextMonthBtn.addEventListener("click", () => {
     currentYear += 1;
   }
   renderCalendar();
+  renderBestDates();
 });
 
 window.addEventListener("popstate", async () => {
@@ -473,3 +573,4 @@ window.addEventListener("popstate", async () => {
 updateRoomDisplay();
 setLockedUI("Enter the room password, or create a new room.");
 renderCalendar();
+renderBestDates();
