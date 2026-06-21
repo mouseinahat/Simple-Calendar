@@ -12,12 +12,12 @@ import {
 // Replace this object with your own Firebase Web App config.
 // If Step 5 already worked, copy the same firebaseConfig from your Step 5 script.js.
 const firebaseConfig = {
-  apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
-  authDomain: "simple-calendar-46931.firebaseapp.com",
-  projectId: "simple-calendar-46931",
-  storageBucket: "simple-calendar-46931.firebasestorage.app",
-  messagingSenderId: "188294863466",
-  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -51,6 +51,8 @@ const bestDatesList = document.getElementById("bestDatesList");
 const userControls = document.getElementById("userControls");
 const lockedNotice = document.getElementById("lockedNotice");
 const bulkSelectPanel = document.getElementById("bulkSelectPanel");
+const langKoBtn = document.getElementById("langKoBtn");
+const langEnBtn = document.getElementById("langEnBtn");
 
 const today = new Date();
 let currentYear = today.getFullYear();
@@ -70,6 +72,88 @@ let myProfile = JSON.parse(localStorage.getItem("simpleCalendarProfile")) || {
 };
 
 let currentRoomId = roomFromUrl;
+let currentLanguage = localStorage.getItem("simpleCalendarLanguage") || "ko";
+
+const translations = {
+  ko: {
+    heroTitle: "모임 날짜를 함께 고르는 공유 달력",
+    heroSubtitle: "방을 만들고 링크와 비밀번호를 공유하세요. 각자 가능한 날짜를 자기 색으로 표시하면 가장 많이 겹치는 날짜를 바로 볼 수 있습니다.",
+    currentRoomEyebrow: "현재 방",
+    noRoom: "방 없음",
+    copyRoomLinkBtn: "방 링크 복사",
+    createRoomHeading: "새 방 만들기",
+    roomTitleLabel: "방 제목",
+    newRoomTitlePlaceholder: "예: 7월 친구 모임",
+    newRoomPasswordLabel: "방 비밀번호",
+    newRoomPasswordPlaceholder: "비밀번호 설정",
+    createRoomBtn: "새 방 만들기",
+    openLinkHeading: "링크로 열기",
+    sharedLinkLabel: "공유받은 방 링크",
+    openRoomBtn: "링크 열기",
+    passwordHeading: "방 비밀번호 입력",
+    passwordHelp: "공유받은 방 링크가 확인되었습니다. 비밀번호를 입력하면 달력을 볼 수 있습니다.",
+    roomPasswordLabel: "방 비밀번호",
+    roomPasswordPlaceholder: "비밀번호 입력",
+    unlockRoomBtn: "달력 열기",
+    lockedDefault: "새 방을 만들거나 공유받은 링크를 열어주세요.",
+    myNameLabel: "내 이름",
+    userNamePlaceholder: "이름 입력",
+    myColorLabel: "내 색상",
+    saveProfileBtn: "프로필 저장",
+    clearMyDatesBtn: "내 날짜 모두 지우기",
+    bulkTitle: "이번 달 빠른 선택",
+    bulkHelp: "현재 보고 있는 월에서 가능한 요일을 한 번에 선택할 수 있습니다. 선택 즉시 달력과 추천 날짜에 반영됩니다.",
+    weekdaysShort: ["일", "월", "화", "수", "목", "금", "토"],
+    weekdaysLong: ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"],
+    selectAllBtn: "모두선택",
+    recommendationHeading: "추천 날짜",
+    recommendationHelp: "가장 많은 사람이 가능한 날짜는 달력에서 노란색으로 강조됩니다.",
+    legendHeading: "참여자 색상",
+    peopleAvailable: "명 가능",
+    emptyRecommendation: "이번 달에는 아직 선택된 가능 날짜가 없습니다.",
+    noParticipants: "아직 이 방에 참여자가 없습니다.",
+    unnamed: "이름 없음"
+  },
+  en: {
+    heroTitle: "A shared calendar for choosing meeting dates",
+    heroSubtitle: "Create a room, share the link and password, and let everyone mark available dates in their own color. The best overlapping dates are highlighted automatically.",
+    currentRoomEyebrow: "Current Room",
+    noRoom: "No room",
+    copyRoomLinkBtn: "Copy room link",
+    createRoomHeading: "Create New Room",
+    roomTitleLabel: "Room title",
+    newRoomTitlePlaceholder: "Example: July friends meetup",
+    newRoomPasswordLabel: "Room password",
+    newRoomPasswordPlaceholder: "Set password",
+    createRoomBtn: "Create New Room",
+    openLinkHeading: "Open via link",
+    sharedLinkLabel: "Shared room link",
+    openRoomBtn: "Open via link",
+    passwordHeading: "Enter room password",
+    passwordHelp: "A shared room link was detected. Enter the password to view the calendar.",
+    roomPasswordLabel: "Room password",
+    roomPasswordPlaceholder: "Enter password",
+    unlockRoomBtn: "Open calendar",
+    lockedDefault: "Create a new room or open a shared room link.",
+    myNameLabel: "My name",
+    userNamePlaceholder: "Enter name",
+    myColorLabel: "My color",
+    saveProfileBtn: "Save profile",
+    clearMyDatesBtn: "Clear my dates",
+    bulkTitle: "Quick select this month",
+    bulkHelp: "Select all matching weekdays in the currently displayed month. Changes are reflected immediately on the calendar and recommendations.",
+    weekdaysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    weekdaysLong: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    selectAllBtn: "Select all",
+    recommendationHeading: "Best dates",
+    recommendationHelp: "Dates with the most available people are highlighted in yellow on the calendar.",
+    legendHeading: "User colors",
+    peopleAvailable: "available",
+    emptyRecommendation: "No available dates have been selected for this month yet.",
+    noParticipants: "No participants in this room yet.",
+    unnamed: "Unnamed"
+  }
+};
 
 function showError(action, error) {
   console.error(action, error);
@@ -79,6 +163,57 @@ function showError(action, error) {
 
 userNameInput.value = myProfile.name || "";
 userColorInput.value = myProfile.color || "#4f46e5";
+
+function t(key) {
+  return translations[currentLanguage]?.[key] ?? translations.ko[key] ?? key;
+}
+
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.textContent = value;
+}
+
+function setPlaceholder(id, value) {
+  const element = document.getElementById(id);
+  if (element) element.placeholder = value;
+}
+
+function applyLanguage(language) {
+  currentLanguage = language;
+  localStorage.setItem("simpleCalendarLanguage", language);
+  document.documentElement.lang = language;
+
+  langKoBtn?.classList.toggle("active", language === "ko");
+  langEnBtn?.classList.toggle("active", language === "en");
+
+  [
+    "heroTitle", "heroSubtitle", "currentRoomEyebrow", "copyRoomLinkBtn",
+    "createRoomHeading", "roomTitleLabel", "newRoomPasswordLabel", "createRoomBtn",
+    "openLinkHeading", "sharedLinkLabel", "openRoomBtn", "passwordHeading",
+    "passwordHelp", "roomPasswordLabel", "unlockRoomBtn", "myNameLabel",
+    "myColorLabel", "saveProfileBtn", "clearMyDatesBtn", "bulkTitle", "bulkHelp",
+    "recommendationHeading", "recommendationHelp", "legendHeading"
+  ].forEach((id) => setText(id, t(id)));
+
+  setPlaceholder("newRoomTitle", t("newRoomTitlePlaceholder"));
+  setPlaceholder("newRoomPassword", t("newRoomPasswordPlaceholder"));
+  setPlaceholder("roomPassword", t("roomPasswordPlaceholder"));
+  setPlaceholder("userName", t("userNamePlaceholder"));
+
+  const weekdayButtonIds = ["weekdaySun", "weekdayMon", "weekdayTue", "weekdayWed", "weekdayThu", "weekdayFri", "weekdaySat"];
+  const weekdayHeaderIds = ["weekSun", "weekMon", "weekTue", "weekWed", "weekThu", "weekFri", "weekSat"];
+  t("weekdaysShort").forEach((label, index) => {
+    setText(weekdayButtonIds[index], label);
+    setText(weekdayHeaderIds[index], label);
+  });
+  setText("selectAllBtn", t("selectAllBtn"));
+
+  updateRoomDisplay();
+  renderCalendar();
+  renderBestDates();
+updateQuickSelectButtonStates();
+  renderLegend();
+}
 
 function pad(number) {
   return String(number).padStart(2, "0");
@@ -138,24 +273,71 @@ function getDatesInCurrentMonthByWeekday(weekday) {
 }
 
 async function addBulkDatesToMyCalendar(datesToAdd, label) {
-  if (!isRoomUnlocked) {
-    statusMessage.textContent = "빠른 선택을 하기 전에 방을 먼저 열어주세요.";
-    return;
+  try {
+    if (!isRoomUnlocked) {
+      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 방을 먼저 열어주세요." : "Open a room before using quick select.";
+      return;
+    }
+
+    saveProfileLocally();
+
+    if (!myProfile.name) {
+      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 이름을 입력해주세요." : "Enter your name before using quick select.";
+      userNameInput.focus();
+      return;
+    }
+
+    if (!datesToAdd.length) {
+      statusMessage.textContent = currentLanguage === "ko" ? "현재 월에 선택할 날짜가 없습니다." : "There are no dates to select in the current month.";
+      return;
+    }
+
+    const dates = getCurrentUserDates();
+    datesToAdd.forEach((dateKey) => dates.add(dateKey));
+    const sortedDates = Array.from(dates).sort();
+
+    // Optimistic UI update: reflect the quick-select result immediately,
+    // even before Firestore's real-time listener returns.
+    const existingIndex = users.findIndex((user) => user.id === myProfile.id);
+    const nextUser = {
+      id: myProfile.id,
+      name: myProfile.name,
+      color: myProfile.color,
+      dates: sortedDates
+    };
+    if (existingIndex >= 0) {
+      users[existingIndex] = { ...users[existingIndex], ...nextUser };
+    } else {
+      users.push(nextUser);
+    }
+    renderCalendar();
+    renderLegend();
+    renderBestDates();
+    updateQuickSelectButtonStates();
+
+    await saveProfileToFirestore(sortedDates, { silent: true });
+    statusMessage.textContent = currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`;
+  } catch (error) {
+    showError(currentLanguage === "ko" ? "빠른 선택" : "Quick select", error);
   }
+}
 
-  saveProfileLocally();
+function updateQuickSelectButtonStates() {
+  if (!bulkSelectPanel) return;
+  const selectedDates = getCurrentUserDates();
+  const buttons = bulkSelectPanel.querySelectorAll("button[data-weekday], button[data-select-all]");
 
-  if (!myProfile.name) {
-    statusMessage.textContent = "빠른 선택을 하기 전에 이름을 입력해주세요.";
-    userNameInput.focus();
-    return;
-  }
+  buttons.forEach((button) => {
+    let dates = [];
+    if (button.dataset.selectAll === "true") {
+      dates = getDatesInCurrentMonthByWeekday(null);
+    } else if (button.dataset.weekday !== undefined) {
+      dates = getDatesInCurrentMonthByWeekday(Number(button.dataset.weekday));
+    }
 
-  const dates = getCurrentUserDates();
-  datesToAdd.forEach((dateKey) => dates.add(dateKey));
-
-  await saveProfileToFirestore(Array.from(dates).sort());
-  statusMessage.textContent = `${label} 날짜가 선택되었습니다.`;
+    const allSelected = dates.length > 0 && dates.every((dateKey) => selectedDates.has(dateKey));
+    button.classList.toggle("quick-selected", allSelected);
+  });
 }
 
 function getRoomDocRef(roomId = currentRoomId) {
@@ -178,7 +360,7 @@ function getRoomUrl(roomId = currentRoomId) {
 
 function updateRoomDisplay() {
   if (!currentRoomId) {
-    currentRoomLabel.textContent = "방 없음";
+    currentRoomLabel.textContent = t("noRoom");
     roomLink.textContent = "";
     return;
   }
@@ -227,7 +409,7 @@ function saveProfileLocally() {
   localStorage.setItem("simpleCalendarProfile", JSON.stringify(myProfile));
 }
 
-async function saveProfileToFirestore(extraDates = null) {
+async function saveProfileToFirestore(extraDates = null, options = {}) {
   try {
   if (!isRoomUnlocked) {
     statusMessage.textContent = "저장하기 전에 방을 먼저 열어주세요.";
@@ -256,7 +438,9 @@ async function saveProfileToFirestore(extraDates = null) {
     { merge: true }
   );
 
-  statusMessage.textContent = "저장되었습니다.";
+  if (!options.silent) {
+    statusMessage.textContent = currentLanguage === "ko" ? "저장되었습니다." : "Saved.";
+  }
   } catch (error) {
     showError("프로필 저장", error);
   }
@@ -351,6 +535,7 @@ async function unlockRoom(roomId, password, updateUrl = true) {
       renderCalendar();
       renderLegend();
       renderBestDates();
+      updateQuickSelectButtonStates();
     }, (error) => {
       showError("실시간 동기화", error);
     });
@@ -372,7 +557,7 @@ function getAvailabilityByDate() {
       }
       availability[date].push({
         id: user.id,
-        name: user.name || "이름 없음",
+        name: user.name || t("unnamed"),
         color: user.color || "#64748b"
       });
     });
@@ -383,7 +568,7 @@ function getAvailabilityByDate() {
 
 function formatDateLabel(dateKey) {
   const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString("ko-KR", {
+  return new Date(year, month - 1, day).toLocaleDateString(currentLanguage === "ko" ? "ko-KR" : "en-US", {
     month: "long",
     day: "numeric"
   });
@@ -412,7 +597,7 @@ function renderBestDates() {
     .slice(0, 10);
 
   if (rankedDates.length === 0) {
-    bestDatesList.innerHTML = `<li class="empty-recommendation">이번 달에는 아직 선택된 가능 날짜가 없습니다.</li>`;
+    bestDatesList.innerHTML = `<li class="empty-recommendation">${t("emptyRecommendation")}</li>`;
     return;
   }
 
@@ -427,7 +612,7 @@ function renderBestDates() {
     dateLabel.textContent = formatDateLabel(dateKey);
 
     const countLabel = document.createElement("span");
-    countLabel.textContent = `${people.length}명 가능`;
+    countLabel.textContent = currentLanguage === "ko" ? `${people.length}${t("peopleAvailable")}` : `${people.length} ${t("peopleAvailable")}`;
 
     header.appendChild(dateLabel);
     header.appendChild(countLabel);
@@ -453,7 +638,7 @@ function renderLegend() {
   legendList.innerHTML = "";
 
   if (users.length === 0) {
-    legendList.innerHTML = `<p class="status">아직 이 방에 참여자가 없습니다.</p>`;
+    legendList.innerHTML = `<p class="status">${t("noParticipants")}</p>`;
     return;
   }
 
@@ -477,7 +662,7 @@ function renderLegend() {
 function renderCalendar() {
   calendarGrid.innerHTML = "";
 
-  const monthName = new Date(currentYear, currentMonth).toLocaleString("ko-KR", {
+  const monthName = new Date(currentYear, currentMonth).toLocaleString(currentLanguage === "ko" ? "ko-KR" : "en-US", {
     year: "numeric",
     month: "long"
   });
@@ -573,11 +758,15 @@ function renderCalendar() {
       }
 
       await saveProfileToFirestore(Array.from(dates).sort());
+      updateQuickSelectButtonStates();
     });
 
     calendarGrid.appendChild(dayCell);
   }
 }
+
+langKoBtn?.addEventListener("click", () => applyLanguage("ko"));
+langEnBtn?.addEventListener("click", () => applyLanguage("en"));
 
 createRoomBtn.addEventListener("click", createRoom);
 
@@ -631,15 +820,15 @@ bulkSelectPanel.addEventListener("click", async (event) => {
 
   if (button.dataset.selectAll === "true") {
     const allDates = getDatesInCurrentMonthByWeekday(null);
-    await addBulkDatesToMyCalendar(allDates, "이번 달 모든");
+    await addBulkDatesToMyCalendar(allDates, currentLanguage === "ko" ? "이번 달 모든" : "All this month");
     return;
   }
 
   if (button.dataset.weekday !== undefined) {
     const weekday = Number(button.dataset.weekday);
-    const weekdayLabels = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+    const weekdayLabels = t("weekdaysLong");
     const dates = getDatesInCurrentMonthByWeekday(weekday);
-    await addBulkDatesToMyCalendar(dates, `이번 달 ${weekdayLabels[weekday]}`);
+    await addBulkDatesToMyCalendar(dates, currentLanguage === "ko" ? `이번 달 ${weekdayLabels[weekday]}` : `This month ${weekdayLabels[weekday]}`);
   }
 });
 
@@ -689,6 +878,7 @@ prevMonthBtn.addEventListener("click", () => {
   }
   renderCalendar();
   renderBestDates();
+  updateQuickSelectButtonStates();
 });
 
 nextMonthBtn.addEventListener("click", () => {
@@ -699,6 +889,7 @@ nextMonthBtn.addEventListener("click", () => {
   }
   renderCalendar();
   renderBestDates();
+  updateQuickSelectButtonStates();
 });
 
 window.addEventListener("popstate", async () => {
@@ -712,6 +903,7 @@ window.addEventListener("popstate", async () => {
 if (currentRoomId) {
   roomLinkInput.value = getRoomUrl(currentRoomId);
 }
+applyLanguage(currentLanguage);
 updateRoomDisplay();
 setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
 renderCalendar();

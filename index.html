@@ -9,17 +9,23 @@
 <body>
   <main class="app">
     <section class="hero-panel">
-      <div>
-        <p class="eyebrow">Simple Calendar</p>
-        <h1>모임 날짜를 함께 고르는 공유 달력</h1>
-        <p class="subtitle">방을 만들고 링크와 비밀번호를 공유하세요. 각자 가능한 날짜를 자기 색으로 표시하면 가장 많이 겹치는 날짜를 바로 볼 수 있습니다.</p>
+      <div class="hero-top-row">
+        <div>
+          <p class="eyebrow">Simple Calendar</p>
+          <h1 id="heroTitle">모임 날짜를 함께 고르는 공유 달력</h1>
+          <p id="heroSubtitle" class="subtitle">방을 만들고 링크와 비밀번호를 공유하세요. 각자 가능한 날짜를 자기 색으로 표시하면 가장 많이 겹치는 날짜를 바로 볼 수 있습니다.</p>
+        </div>
+        <div class="language-switch" aria-label="Language selection">
+          <button id="langKoBtn" type="button" class="active">한국어</button>
+          <button id="langEnBtn" type="button">English</button>
+        </div>
       </div>
     </section>
 
     <section class="panel control-panel">
       <div class="room-box">
         <div>
-          <p class="eyebrow">현재 방</p>
+          <p id="currentRoomEyebrow" class="eyebrow">현재 방</p>
           <h2 id="currentRoomLabel">방 없음</h2>
           <p id="roomLink" class="room-link"></p>
         </div>
@@ -30,22 +36,22 @@
 
       <div class="setup-grid">
         <section class="mini-card">
-          <h2>새 방 만들기</h2>
+          <h2 id="createRoomHeading">새 방 만들기</h2>
           <label>
-            방 제목
+            <span id="roomTitleLabel">방 제목</span>
             <input id="newRoomTitle" type="text" placeholder="예: 7월 친구 모임" />
           </label>
           <label>
-            방 비밀번호
+            <span id="newRoomPasswordLabel">방 비밀번호</span>
             <input id="newRoomPassword" type="password" placeholder="비밀번호 설정" />
           </label>
           <button id="createRoomBtn" type="button">새 방 만들기</button>
         </section>
 
         <section class="mini-card">
-          <h2>링크로 열기</h2>
+          <h2 id="openLinkHeading">링크로 열기</h2>
           <label>
-            공유받은 방 링크
+            <span id="sharedLinkLabel">공유받은 방 링크</span>
             <input id="roomLinkInput" type="url" placeholder="https://mouseinahat.github.io/Simple-Calendar/?room=..." />
           </label>
           <button id="openRoomBtn" type="button">링크 열기</button>
@@ -53,11 +59,11 @@
       </div>
 
       <div id="passwordPanel" class="password-panel hidden">
-        <h2>방 비밀번호 입력</h2>
-        <p class="subtitle">공유받은 방 링크가 확인되었습니다. 비밀번호를 입력하면 달력을 볼 수 있습니다.</p>
+        <h2 id="passwordHeading">방 비밀번호 입력</h2>
+        <p id="passwordHelp" class="subtitle">공유받은 방 링크가 확인되었습니다. 비밀번호를 입력하면 달력을 볼 수 있습니다.</p>
         <div class="password-row">
           <label>
-            방 비밀번호
+            <span id="roomPasswordLabel">방 비밀번호</span>
             <input id="roomPassword" type="password" placeholder="비밀번호 입력" />
           </label>
           <button id="unlockRoomBtn" type="button">달력 열기</button>
@@ -69,11 +75,11 @@
       <div id="userControls" class="profile-card hidden">
         <div class="form-grid two-columns">
           <label>
-            내 이름
+            <span id="myNameLabel">내 이름</span>
             <input id="userName" type="text" placeholder="이름 입력" />
           </label>
           <label>
-            내 색상
+            <span id="myColorLabel">내 색상</span>
             <input id="userColor" type="color" value="#4f46e5" />
           </label>
         </div>
@@ -84,18 +90,18 @@
 
         <div id="bulkSelectPanel" class="bulk-select-panel">
           <div>
-            <h3>이번 달 빠른 선택</h3>
-            <p>현재 보고 있는 월에서 가능한 요일을 한 번에 선택할 수 있습니다.</p>
+            <h3 id="bulkTitle">이번 달 빠른 선택</h3>
+            <p id="bulkHelp">현재 보고 있는 월에서 가능한 요일을 한 번에 선택할 수 있습니다.</p>
           </div>
           <div class="weekday-select-buttons" aria-label="요일별 빠른 선택">
-            <button type="button" data-weekday="1">월</button>
-            <button type="button" data-weekday="2">화</button>
-            <button type="button" data-weekday="3">수</button>
-            <button type="button" data-weekday="4">목</button>
-            <button type="button" data-weekday="5">금</button>
-            <button type="button" data-weekday="6">토</button>
-            <button type="button" data-weekday="0">일</button>
-            <button type="button" data-select-all="true" class="all-select-btn">모두선택</button>
+            <button type="button" data-weekday="1" id="weekdayMon">월</button>
+            <button type="button" data-weekday="2" id="weekdayTue">화</button>
+            <button type="button" data-weekday="3" id="weekdayWed">수</button>
+            <button type="button" data-weekday="4" id="weekdayThu">목</button>
+            <button type="button" data-weekday="5" id="weekdayFri">금</button>
+            <button type="button" data-weekday="6" id="weekdaySat">토</button>
+            <button type="button" data-weekday="0" id="weekdaySun">일</button>
+            <button type="button" data-select-all="true" class="all-select-btn" id="selectAllBtn">모두선택</button>
           </div>
         </div>
       </div>
@@ -110,27 +116,27 @@
         <button id="nextMonthBtn" class="nav-btn" aria-label="다음 달">›</button>
       </header>
 
-      <div class="weekdays">
-        <div>일</div>
-        <div>월</div>
-        <div>화</div>
-        <div>수</div>
-        <div>목</div>
-        <div>금</div>
-        <div>토</div>
+      <div class="weekdays" id="weekdaysRow">
+        <div id="weekSun">일</div>
+        <div id="weekMon">월</div>
+        <div id="weekTue">화</div>
+        <div id="weekWed">수</div>
+        <div id="weekThu">목</div>
+        <div id="weekFri">금</div>
+        <div id="weekSat">토</div>
       </div>
 
       <div id="calendarGrid" class="calendar-grid"></div>
     </section>
 
     <section id="recommendationSection" class="panel recommendation-panel hidden">
-      <h2>추천 날짜</h2>
-      <p class="subtitle">가장 많은 사람이 가능한 날짜는 달력에서 노란색으로 강조됩니다.</p>
+      <h2 id="recommendationHeading">추천 날짜</h2>
+      <p id="recommendationHelp" class="subtitle">가장 많은 사람이 가능한 날짜는 달력에서 노란색으로 강조됩니다.</p>
       <ol id="bestDatesList" class="best-dates-list"></ol>
     </section>
 
     <section id="legendSection" class="panel legend-panel hidden">
-      <h2>참여자 색상</h2>
+      <h2 id="legendHeading">참여자 색상</h2>
       <div id="legendList" class="legend-list"></div>
     </section>
   </main>
