@@ -143,6 +143,18 @@ input[type="color"] { height: 48px; padding: 0.25rem; }
   font-size: 0.8rem;
   font-weight: 800;
 }
+.calendar-day {
+  position: relative;
+}
+
+.day-number {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
 
 .day-cell {
   min-height: 112px;
