@@ -81,6 +81,23 @@
           <button id="saveProfileBtn" type="button">프로필 저장</button>
           <button id="clearMyDatesBtn" type="button" class="secondary">내 날짜 모두 지우기</button>
         </div>
+
+        <div id="bulkSelectPanel" class="bulk-select-panel">
+          <div>
+            <h3>이번 달 빠른 선택</h3>
+            <p>현재 보고 있는 월에서 가능한 요일을 한 번에 선택할 수 있습니다.</p>
+          </div>
+          <div class="weekday-select-buttons" aria-label="요일별 빠른 선택">
+            <button type="button" data-weekday="1">월</button>
+            <button type="button" data-weekday="2">화</button>
+            <button type="button" data-weekday="3">수</button>
+            <button type="button" data-weekday="4">목</button>
+            <button type="button" data-weekday="5">금</button>
+            <button type="button" data-weekday="6">토</button>
+            <button type="button" data-weekday="0">일</button>
+            <button type="button" data-select-all="true" class="all-select-btn">모두선택</button>
+          </div>
+        </div>
       </div>
 
       <p id="statusMessage" class="status">방을 만들거나 기존 방을 열어주세요.</p>

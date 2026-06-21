@@ -50,6 +50,7 @@ const recommendationSection = document.getElementById("recommendationSection");
 const bestDatesList = document.getElementById("bestDatesList");
 const userControls = document.getElementById("userControls");
 const lockedNotice = document.getElementById("lockedNotice");
+const bulkSelectPanel = document.getElementById("bulkSelectPanel");
 
 const today = new Date();
 let currentYear = today.getFullYear();
@@ -115,6 +116,46 @@ function extractRoomIdFromLink(value) {
 
 function getDateKey(year, monthIndex, day) {
   return `${year}-${pad(monthIndex + 1)}-${pad(day)}`;
+}
+
+function getCurrentUserDates() {
+  const currentUser = users.find((user) => user.id === myProfile.id);
+  return new Set(currentUser?.dates || []);
+}
+
+function getDatesInCurrentMonthByWeekday(weekday) {
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const dates = [];
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(currentYear, currentMonth, day);
+    if (weekday === null || date.getDay() === weekday) {
+      dates.push(getDateKey(currentYear, currentMonth, day));
+    }
+  }
+
+  return dates;
+}
+
+async function addBulkDatesToMyCalendar(datesToAdd, label) {
+  if (!isRoomUnlocked) {
+    statusMessage.textContent = "빠른 선택을 하기 전에 방을 먼저 열어주세요.";
+    return;
+  }
+
+  saveProfileLocally();
+
+  if (!myProfile.name) {
+    statusMessage.textContent = "빠른 선택을 하기 전에 이름을 입력해주세요.";
+    userNameInput.focus();
+    return;
+  }
+
+  const dates = getCurrentUserDates();
+  datesToAdd.forEach((dateKey) => dates.add(dateKey));
+
+  await saveProfileToFirestore(Array.from(dates).sort());
+  statusMessage.textContent = `${label} 날짜가 선택되었습니다.`;
 }
 
 function getRoomDocRef(roomId = currentRoomId) {
@@ -581,6 +622,25 @@ unlockRoomBtn.addEventListener("click", async () => {
 
 saveProfileBtn.addEventListener("click", async () => {
   await saveProfileToFirestore();
+});
+
+
+bulkSelectPanel.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  if (button.dataset.selectAll === "true") {
+    const allDates = getDatesInCurrentMonthByWeekday(null);
+    await addBulkDatesToMyCalendar(allDates, "이번 달 모든");
+    return;
+  }
+
+  if (button.dataset.weekday !== undefined) {
+    const weekday = Number(button.dataset.weekday);
+    const weekdayLabels = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+    const dates = getDatesInCurrentMonthByWeekday(weekday);
+    await addBulkDatesToMyCalendar(dates, `이번 달 ${weekdayLabels[weekday]}`);
+  }
 });
 
 clearMyDatesBtn.addEventListener("click", async () => {

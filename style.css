@@ -93,6 +93,52 @@ h2 { letter-spacing: -0.02em; }
 
 .hidden { display: none !important; }
 
+.bulk-select-panel {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.bulk-select-panel h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.bulk-select-panel p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+}
+.weekday-select-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.weekday-select-buttons button {
+  min-height: 42px;
+  min-width: 48px;
+  border-radius: 999px;
+  padding: 0 14px;
+  background: #fff;
+  color: #334155;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.weekday-select-buttons button:hover {
+  background: #eef2ff;
+  color: var(--primary-dark);
+}
+.weekday-select-buttons .all-select-btn {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.weekday-select-buttons .all-select-btn:hover {
+  background: var(--primary-dark);
+  color: #fff;
+}
+
+
 label {
   display: flex;
   flex-direction: column;
@@ -286,6 +332,7 @@ button:disabled { cursor: not-allowed; opacity: 0.65; }
 }
 
 @media (max-width: 430px) {
+  .weekday-select-buttons button { min-width: 42px; padding: 0 10px; }
   .calendar-day, .empty-day { min-height: 74px; }
   .calendar-day { padding: 30px 4px 5px; }
   .weekdays div { font-size: 12px; }
