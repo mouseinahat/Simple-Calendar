@@ -68,6 +68,12 @@ let myProfile = JSON.parse(localStorage.getItem("simpleCalendarProfile")) || {
 
 let currentRoomId = roomFromUrl;
 
+function showError(action, error) {
+  console.error(action, error);
+  const message = error?.message || String(error || "Unknown error");
+  statusMessage.textContent = `${action} failed: ${message}`;
+}
+
 userNameInput.value = myProfile.name || "";
 userColorInput.value = myProfile.color || "#4f46e5";
 roomIdInput.value = currentRoomId;
@@ -154,6 +160,7 @@ function saveProfileLocally() {
 }
 
 async function saveProfileToFirestore(extraDates = null) {
+  try {
   if (!isRoomUnlocked) {
     statusMessage.textContent = "Unlock the room before saving.";
     return;
@@ -182,87 +189,108 @@ async function saveProfileToFirestore(extraDates = null) {
   );
 
   statusMessage.textContent = "Saved.";
+  } catch (error) {
+    showError("Save profile", error);
+  }
 }
 
 async function createRoom() {
-  const password = newRoomPasswordInput.value.trim();
-  const title = newRoomTitleInput.value.trim() || "Untitled Room";
+  try {
+    const password = newRoomPasswordInput.value.trim();
+    const title = newRoomTitleInput.value.trim() || "Untitled Room";
 
-  if (!password) {
-    statusMessage.textContent = "Please set a room password.";
-    newRoomPasswordInput.focus();
-    return;
+    if (!password) {
+      statusMessage.textContent = "Please set a room password.";
+      newRoomPasswordInput.focus();
+      return;
+    }
+
+    createRoomBtn.disabled = true;
+    createRoomBtn.textContent = "Creating...";
+    statusMessage.textContent = "Creating room...";
+
+    const newRoomId = createRandomRoomId();
+    currentRoomId = newRoomId;
+    currentRoomData = {
+      id: newRoomId,
+      title,
+      password
+    };
+
+    await setDoc(getRoomDocRef(newRoomId), {
+      id: newRoomId,
+      title,
+      password,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    roomPasswordInput.value = password;
+    newRoomPasswordInput.value = "";
+    newRoomTitleInput.value = "";
+    await unlockRoom(newRoomId, password, true);
+    statusMessage.textContent = "New password-protected room created. Share the room link and password.";
+  } catch (error) {
+    showError("Create room", error);
+  } finally {
+    createRoomBtn.disabled = false;
+    createRoomBtn.textContent = "Create New Room";
   }
-
-  const newRoomId = createRandomRoomId();
-  currentRoomId = newRoomId;
-  currentRoomData = {
-    id: newRoomId,
-    title,
-    password
-  };
-
-  await setDoc(getRoomDocRef(newRoomId), {
-    id: newRoomId,
-    title,
-    password,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  });
-
-  roomPasswordInput.value = password;
-  newRoomPasswordInput.value = "";
-  newRoomTitleInput.value = "";
-  await unlockRoom(newRoomId, password, true);
-  statusMessage.textContent = "New password-protected room created. Share the room link and password.";
 }
 
 async function unlockRoom(roomId, password, updateUrl = true) {
-  const cleanedRoomId = sanitizeRoomId(roomId);
-  const enteredPassword = String(password || "").trim();
+  try {
+    const cleanedRoomId = sanitizeRoomId(roomId);
+    const enteredPassword = String(password || "").trim();
 
-  if (!cleanedRoomId) {
-    statusMessage.textContent = "Please enter a room ID.";
-    return;
+    if (!cleanedRoomId) {
+      statusMessage.textContent = "Please enter a room ID.";
+      return;
+    }
+
+    currentRoomId = cleanedRoomId;
+    updateRoomDisplay();
+
+    if (updateUrl) {
+      const newUrl = getRoomUrl(currentRoomId);
+      window.history.pushState({}, "", newUrl);
+    }
+
+    statusMessage.textContent = "Checking room password...";
+    const roomSnapshot = await getDoc(getRoomDocRef());
+
+    if (!roomSnapshot.exists()) {
+      setLockedUI("Room not found. Create a new room or check the link.");
+      return;
+    }
+
+    const roomData = roomSnapshot.data();
+    const actualPassword = String(roomData.password || "");
+
+    if (!enteredPassword || enteredPassword !== actualPassword) {
+      setLockedUI("Wrong password or missing password. Please try again.");
+      roomPasswordInput.focus();
+      return;
+    }
+
+    currentRoomData = roomData;
+    setUnlockedUI();
+    updateRoomDisplay();
+
+    if (unsubscribeRoom) unsubscribeRoom();
+    unsubscribeRoom = onSnapshot(getUsersCollectionRef(), (snapshot) => {
+      users = snapshot.docs.map((document) => document.data());
+      renderCalendar();
+      renderLegend();
+      renderBestDates();
+    }, (error) => {
+      showError("Realtime sync", error);
+    });
+
+    statusMessage.textContent = `Unlocked room: ${currentRoomId}`;
+  } catch (error) {
+    showError("Unlock room", error);
   }
-
-  currentRoomId = cleanedRoomId;
-  updateRoomDisplay();
-
-  if (updateUrl) {
-    const newUrl = getRoomUrl(currentRoomId);
-    window.history.pushState({}, "", newUrl);
-  }
-
-  const roomSnapshot = await getDoc(getRoomDocRef());
-
-  if (!roomSnapshot.exists()) {
-    setLockedUI("Room not found. Create a new room or check the link.");
-    return;
-  }
-
-  const roomData = roomSnapshot.data();
-  const actualPassword = String(roomData.password || "");
-
-  if (!enteredPassword || enteredPassword !== actualPassword) {
-    setLockedUI("Wrong password or missing password. Please try again.");
-    roomPasswordInput.focus();
-    return;
-  }
-
-  currentRoomData = roomData;
-  setUnlockedUI();
-  updateRoomDisplay();
-
-  if (unsubscribeRoom) unsubscribeRoom();
-  unsubscribeRoom = onSnapshot(getUsersCollectionRef(), (snapshot) => {
-    users = snapshot.docs.map((document) => document.data());
-    renderCalendar();
-    renderLegend();
-    renderBestDates();
-  });
-
-  statusMessage.textContent = `Unlocked room: ${currentRoomId}`;
 }
 
 
@@ -487,8 +515,13 @@ createRoomBtn.addEventListener("click", createRoom);
 
 copyRoomLinkBtn.addEventListener("click", async () => {
   const link = getRoomUrl(currentRoomId);
-  await navigator.clipboard.writeText(link);
-  statusMessage.textContent = "Room link copied. Share the password separately.";
+  try {
+    await navigator.clipboard.writeText(link);
+    statusMessage.textContent = "Room link copied. Share the password separately.";
+  } catch (error) {
+    roomLink.textContent = link;
+    statusMessage.textContent = "Could not auto-copy. Manually copy the room link shown above.";
+  }
 });
 
 openRoomBtn.addEventListener("click", async () => {
