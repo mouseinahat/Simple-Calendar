@@ -4,19 +4,19 @@ import {
   collection,
   doc,
   setDoc,
-  deleteDoc,
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 // Replace this object with your own Firebase Web App config.
+// If Step 4 already worked, copy the same firebaseConfig from your Step 4 script.js.
 const firebaseConfig = {
-  apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
-  authDomain: "simple-calendar-46931.firebaseapp.com",
-  projectId: "simple-calendar-46931",
-  storageBucket: "simple-calendar-46931.firebasestorage.app",
-  messagingSenderId: "188294863466",
-  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -33,6 +33,11 @@ const saveProfileBtn = document.getElementById("saveProfileBtn");
 const clearMyDatesBtn = document.getElementById("clearMyDatesBtn");
 const statusMessage = document.getElementById("statusMessage");
 const legendList = document.getElementById("legendList");
+const currentRoomLabel = document.getElementById("currentRoomLabel");
+const roomLink = document.getElementById("roomLink");
+const createRoomBtn = document.getElementById("createRoomBtn");
+const copyRoomLinkBtn = document.getElementById("copyRoomLinkBtn");
+const openRoomBtn = document.getElementById("openRoomBtn");
 
 const today = new Date();
 let currentYear = today.getFullYear();
@@ -40,40 +45,86 @@ let currentMonth = today.getMonth();
 let users = [];
 let unsubscribeRoom = null;
 
+const urlParams = new URLSearchParams(window.location.search);
+const roomFromUrl = sanitizeRoomId(urlParams.get("room")) || "default-room";
+
 let myProfile = JSON.parse(localStorage.getItem("simpleCalendarProfile")) || {
   id: crypto.randomUUID(),
   name: "",
-  color: "#4f46e5",
-  roomId: "default-room"
+  color: "#4f46e5"
 };
+
+let currentRoomId = roomFromUrl;
 
 userNameInput.value = myProfile.name || "";
 userColorInput.value = myProfile.color || "#4f46e5";
-roomIdInput.value = myProfile.roomId || "default-room";
+roomIdInput.value = currentRoomId;
 
 function pad(number) {
   return String(number).padStart(2, "0");
+}
+
+function sanitizeRoomId(value) {
+  if (!value) return "";
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
+
+function createRandomRoomId() {
+  const firstPart = Math.random().toString(36).slice(2, 8);
+  const secondPart = Date.now().toString(36).slice(-4);
+  return `room-${firstPart}-${secondPart}`;
 }
 
 function getDateKey(year, monthIndex, day) {
   return `${year}-${pad(monthIndex + 1)}-${pad(day)}`;
 }
 
+function getRoomDocRef(roomId = currentRoomId) {
+  return doc(db, "rooms", roomId);
+}
+
 function getUserDocRef() {
-  const roomId = (roomIdInput.value || "default-room").trim();
-  return doc(db, "rooms", roomId, "users", myProfile.id);
+  return doc(db, "rooms", currentRoomId, "users", myProfile.id);
 }
 
 function getUsersCollectionRef() {
-  const roomId = (roomIdInput.value || "default-room").trim();
-  return collection(db, "rooms", roomId, "users");
+  return collection(db, "rooms", currentRoomId, "users");
+}
+
+function getRoomUrl(roomId = currentRoomId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("room", roomId);
+  return url.toString();
+}
+
+function updateRoomDisplay() {
+  currentRoomLabel.textContent = currentRoomId;
+  roomIdInput.value = currentRoomId;
+  roomLink.textContent = getRoomUrl(currentRoomId);
 }
 
 function saveProfileLocally() {
   myProfile.name = userNameInput.value.trim();
   myProfile.color = userColorInput.value;
-  myProfile.roomId = (roomIdInput.value || "default-room").trim();
   localStorage.setItem("simpleCalendarProfile", JSON.stringify(myProfile));
+}
+
+async function ensureRoomExists() {
+  await setDoc(
+    getRoomDocRef(),
+    {
+      id: currentRoomId,
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp()
+    },
+    { merge: true }
+  );
 }
 
 async function saveProfileToFirestore(extraDates = null) {
@@ -83,6 +134,8 @@ async function saveProfileToFirestore(extraDates = null) {
     statusMessage.textContent = "Please enter your name first.";
     return;
   }
+
+  await ensureRoomExists();
 
   const currentUser = users.find((user) => user.id === myProfile.id);
   const existingDates = currentUser?.dates || [];
@@ -102,23 +155,36 @@ async function saveProfileToFirestore(extraDates = null) {
   statusMessage.textContent = "Saved.";
 }
 
-function listenToRoom() {
+async function openRoom(roomId, updateUrl = true) {
+  const cleanedRoomId = sanitizeRoomId(roomId) || "default-room";
+  currentRoomId = cleanedRoomId;
+  users = [];
+
+  updateRoomDisplay();
+
+  if (updateUrl) {
+    const newUrl = getRoomUrl(currentRoomId);
+    window.history.pushState({}, "", newUrl);
+  }
+
   if (unsubscribeRoom) unsubscribeRoom();
 
-  saveProfileLocally();
+  await ensureRoomExists();
 
   unsubscribeRoom = onSnapshot(getUsersCollectionRef(), (snapshot) => {
     users = snapshot.docs.map((document) => document.data());
     renderCalendar();
     renderLegend();
   });
+
+  statusMessage.textContent = `Opened room: ${currentRoomId}`;
 }
 
 function renderLegend() {
   legendList.innerHTML = "";
 
   if (users.length === 0) {
-    legendList.innerHTML = `<p class="status">No users yet.</p>`;
+    legendList.innerHTML = `<p class="status">No users in this room yet.</p>`;
     return;
   }
 
@@ -234,9 +300,24 @@ function renderCalendar() {
   }
 }
 
+createRoomBtn.addEventListener("click", async () => {
+  const newRoomId = createRandomRoomId();
+  await openRoom(newRoomId, true);
+  statusMessage.textContent = "New room created. Share the room link with others.";
+});
+
+copyRoomLinkBtn.addEventListener("click", async () => {
+  const link = getRoomUrl(currentRoomId);
+  await navigator.clipboard.writeText(link);
+  statusMessage.textContent = "Room link copied.";
+});
+
+openRoomBtn.addEventListener("click", async () => {
+  await openRoom(roomIdInput.value, true);
+});
+
 saveProfileBtn.addEventListener("click", async () => {
   await saveProfileToFirestore();
-  listenToRoom();
 });
 
 clearMyDatesBtn.addEventListener("click", async () => {
@@ -262,7 +343,12 @@ clearMyDatesBtn.addEventListener("click", async () => {
   statusMessage.textContent = "Your selected dates were cleared.";
 });
 
-roomIdInput.addEventListener("change", listenToRoom);
+roomIdInput.addEventListener("keydown", async (event) => {
+  if (event.key === "Enter") {
+    await openRoom(roomIdInput.value, true);
+  }
+});
+
 userColorInput.addEventListener("change", saveProfileLocally);
 userNameInput.addEventListener("change", saveProfileLocally);
 
@@ -284,5 +370,12 @@ nextMonthBtn.addEventListener("click", () => {
   renderCalendar();
 });
 
-listenToRoom();
+window.addEventListener("popstate", async () => {
+  const params = new URLSearchParams(window.location.search);
+  const roomId = sanitizeRoomId(params.get("room")) || "default-room";
+  await openRoom(roomId, false);
+});
+
+updateRoomDisplay();
+openRoom(currentRoomId, false);
 renderCalendar();

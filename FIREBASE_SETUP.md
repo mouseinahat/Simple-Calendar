@@ -1,39 +1,62 @@
-# Firebase Setup for Simple Calendar
+# Firebase Setup for Simple Calendar - Step 5
 
-## 1. Create Firebase Project
+Step 5 adds independent calendar rooms.
 
-1. Go to Firebase Console.
-2. Create a new project named `Simple Calendar`.
-3. Disable Google Analytics if you want a simpler setup.
+## What changed
 
-## 2. Add Web App
+The URL now controls the room:
 
-1. Click the Web icon `</>`.
-2. App nickname: `simple-calendar-web`.
-3. Copy the `firebaseConfig` object.
-4. Paste it into `script.js` where the placeholder config is located.
+```txt
+/simple-calendar/?room=abc123
+```
 
-## 3. Create Firestore Database
-
-1. Go to **Firestore Database**.
-2. Click **Create database**.
-3. Choose **Test mode** for initial testing.
-4. Select a nearby region.
-
-## 4. Firestore Data Shape
-
-The app stores data like this:
+Each room stores separate data in Firestore:
 
 ```txt
 rooms
-  default-room
+  abc123
     users
       user-id-1
         name: "Siwon"
         color: "#4f46e5"
         dates: ["2026-06-02", "2026-06-08"]
+
+  another-room
+    users
+      user-id-2
+        name: "Minji"
+        color: "#dc2626"
+        dates: ["2026-06-10"]
 ```
 
-## 5. Important Warning
+## Important
 
-Test mode is only for development. Later, replace it with safer Firestore security rules.
+If Step 4 already worked, copy the same `firebaseConfig` object from your old `script.js` into this Step 5 `script.js`.
+
+Replace this part:
+
+```js
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+```
+
+with your real Firebase values.
+
+## How to use
+
+1. Open the website.
+2. Click **Create New Room**.
+3. Click **Copy Room Link**.
+4. Send that link to other people.
+5. Everyone who opens the same link will see the same room data.
+
+## Limitation
+
+There is no password yet. Anyone with the room link can open the room.
+Password protection will be added in Step 6.

@@ -1,6 +1,4 @@
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -23,25 +21,57 @@ body {
   box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
 }
 
-.panel {
-  padding: 24px;
-  margin-bottom: 24px;
+.panel { padding: 24px; margin-bottom: 24px; }
+
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 8px; font-size: 32px; }
+.subtitle, .status, .room-link { color: #64748b; }
+.status { margin-bottom: 0; }
+
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
 }
 
-h1,
-h2,
-p {
-  margin-top: 0;
+.room-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin: 22px 0;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  background: #f8fafc;
 }
 
-h1 {
-  margin-bottom: 8px;
-  font-size: 32px;
-}
-
-.subtitle,
-.status {
+.eyebrow {
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 900;
   color: #64748b;
+}
+
+#currentRoomLabel {
+  margin-bottom: 6px;
+  font-size: 24px;
+}
+
+.room-link {
+  margin-bottom: 0;
+  word-break: break-all;
+  font-size: 14px;
+}
+
+.room-actions,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .form-grid {
@@ -68,15 +98,7 @@ input {
   background: #fff;
 }
 
-input[type="color"] {
-  padding: 5px;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
+input[type="color"] { padding: 5px; }
 
 button {
   border: none;
@@ -84,7 +106,8 @@ button {
   font-weight: 800;
 }
 
-.actions button {
+.actions button,
+.room-actions button {
   min-height: 44px;
   border-radius: 14px;
   padding: 0 18px;
@@ -92,15 +115,13 @@ button {
   color: #fff;
 }
 
-.actions button.secondary {
-  background: #f1f5f9;
+.actions button.secondary,
+.room-actions button.secondary {
+  background: #e2e8f0;
   color: #334155;
 }
 
-.calendar-card {
-  overflow: hidden;
-  margin-bottom: 24px;
-}
+.calendar-card { overflow: hidden; margin-bottom: 24px; }
 
 .calendar-header {
   height: 136px;
@@ -129,16 +150,8 @@ button {
 }
 
 .weekdays,
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-}
-
-.weekdays {
-  background: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
-}
-
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.weekdays { background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
 .weekdays div {
   padding: 24px 10px;
   text-align: center;
@@ -155,9 +168,7 @@ button {
 }
 
 .calendar-day:nth-child(7n),
-.empty-day:nth-child(7n) {
-  border-right: none;
-}
+.empty-day:nth-child(7n) { border-right: none; }
 
 .calendar-day {
   position: relative;
@@ -166,10 +177,7 @@ button {
   transition: 0.12s ease;
 }
 
-.calendar-day:hover {
-  background: #f8fafc;
-}
-
+.calendar-day:hover { background: #f8fafc; }
 .calendar-day.mine {
   outline: 4px solid var(--my-color, #4f46e5);
   outline-offset: -4px;
@@ -218,20 +226,9 @@ button {
   box-shadow: 0 0 0 1px #e5e7eb;
 }
 
-.best-day {
-  box-shadow: inset 0 0 0 4px #fde047;
-}
-
-.legend-panel h2 {
-  margin-bottom: 14px;
-}
-
-.legend-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
+.best-day { box-shadow: inset 0 0 0 4px #fde047; }
+.legend-panel h2 { margin-bottom: 14px; }
+.legend-list { display: flex; flex-wrap: wrap; gap: 12px; }
 .legend-item {
   display: flex;
   align-items: center;
@@ -243,62 +240,16 @@ button {
 }
 
 @media (max-width: 760px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .calendar-header {
-    height: 96px;
-    grid-template-columns: 64px 1fr 64px;
-  }
-
-  .calendar-header h2 {
-    font-size: 26px;
-  }
-
-  .nav-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-    font-size: 42px;
-  }
-
-  .weekdays div {
-    font-size: 13px;
-    padding: 16px 4px;
-  }
-
-  .calendar-day,
-  .empty-day {
-    min-height: 96px;
-  }
-
-  .calendar-day {
-    padding: 36px 6px 8px;
-  }
-
-  .day-number {
-    font-size: 15px;
-    top: 8px;
-    left: 8px;
-  }
-
-  .availability-count {
-    width: 28px;
-    height: 28px;
-    top: 8px;
-    right: 8px;
-    font-size: 14px;
-  }
-
-  .color-dots {
-    gap: 5px;
-    margin-top: 24px;
-  }
-
-  .color-dot,
-  .legend-dot {
-    width: 16px;
-    height: 16px;
-  }
+  .room-box { align-items: stretch; flex-direction: column; }
+  .form-grid { grid-template-columns: 1fr; }
+  .calendar-header { height: 96px; grid-template-columns: 64px 1fr 64px; }
+  .calendar-header h2 { font-size: 26px; }
+  .nav-btn { width: 52px; height: 52px; border-radius: 16px; font-size: 42px; }
+  .weekdays div { font-size: 13px; padding: 16px 4px; }
+  .calendar-day, .empty-day { min-height: 96px; }
+  .calendar-day { padding: 36px 6px 8px; }
+  .day-number { font-size: 15px; top: 8px; left: 8px; }
+  .availability-count { width: 28px; height: 28px; top: 8px; right: 8px; font-size: 14px; }
+  .color-dots { gap: 5px; margin-top: 24px; }
+  .color-dot, .legend-dot { width: 16px; height: 16px; }
 }

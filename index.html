@@ -9,8 +9,24 @@
 <body>
   <main class="app">
     <section class="panel user-panel">
-      <h1>Simple Calendar</h1>
-      <p class="subtitle">Pick your available dates. Everyone using the same room link can see updates.</p>
+      <div class="title-row">
+        <div>
+          <h1>Simple Calendar</h1>
+          <p class="subtitle">Create a room, share the link, and mark available dates together.</p>
+        </div>
+      </div>
+
+      <div class="room-box">
+        <div>
+          <p class="eyebrow">Current Room</p>
+          <h2 id="currentRoomLabel">default-room</h2>
+          <p id="roomLink" class="room-link"></p>
+        </div>
+        <div class="room-actions">
+          <button id="createRoomBtn" type="button">Create New Room</button>
+          <button id="copyRoomLinkBtn" type="button" class="secondary">Copy Room Link</button>
+        </div>
+      </div>
 
       <div class="form-grid">
         <label>
@@ -24,14 +40,15 @@
         </label>
 
         <label>
-          Room ID
+          Open another Room ID
           <input id="roomId" type="text" value="default-room" />
         </label>
       </div>
 
       <div class="actions">
-        <button id="saveProfileBtn">Save Profile</button>
-        <button id="clearMyDatesBtn" class="secondary">Clear My Dates</button>
+        <button id="saveProfileBtn" type="button">Save Profile</button>
+        <button id="openRoomBtn" type="button" class="secondary">Open Room</button>
+        <button id="clearMyDatesBtn" type="button" class="secondary">Clear My Dates</button>
       </div>
 
       <p id="statusMessage" class="status">Enter your name and choose dates.</p>
@@ -58,7 +75,7 @@
     </section>
 
     <section class="panel legend-panel">
-      <h2>People</h2>
+      <h2>People in this room</h2>
       <div id="legendList" class="legend-list"></div>
     </section>
   </main>
