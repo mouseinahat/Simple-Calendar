@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Calendar - Shared Room</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Simple Calendar</p>
+        <h1>Shared Meeting Calendar</h1>
+        <p class="subtitle">Choose your name, color, and available dates. Everyone using the same room link sees the same calendar.</p>
+      </div>
+      <div class="room-card">
+        <span>Room link</span>
+        <strong id="roomLabel">Loading...</strong>
+        <button id="copyLinkBtn" type="button">Copy Link</button>
+      </div>
+    </section>
+
+    <section class="panel setup-panel">
+      <label>
+        Your name
+        <input id="userNameInput" type="text" placeholder="e.g. Siwon" maxlength="40" />
+      </label>
+
+      <label>
+        Your color
+        <input id="userColorInput" type="color" value="#4f46e5" />
+      </label>
+
+      <label>
+        Month
+        <input id="monthInput" type="month" />
+      </label>
+
+      <button id="saveProfileBtn" type="button">Save Profile</button>
+      <button id="clearMyDatesBtn" type="button" class="secondary">Clear My Dates</button>
+    </section>
+
+    <section class="calendar-card">
+      <header class="calendar-header">
+        <button id="prevMonthBtn" type="button" aria-label="Previous month">‹</button>
+        <h2 id="monthTitle">Month</h2>
+        <button id="nextMonthBtn" type="button" aria-label="Next month">›</button>
+      </header>
+
+      <div class="weekday-grid">
+        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+
+      <div id="calendarGrid" class="calendar-grid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h3>Participants</h3>
+        <span id="participantCount">0 people</span>
+      </div>
+      <div id="participantList" class="participant-list"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h3>Best Dates</h3>
+        <span>Most overlap first</span>
+      </div>
+      <ol id="bestDateList" class="best-date-list"></ol>
+    </section>
+  </main>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
