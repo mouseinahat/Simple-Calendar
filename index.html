@@ -3,72 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simple Calendar - Shared Room</title>
+  <title>Simple Calendar</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="app-shell">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">Simple Calendar</p>
-        <h1>Shared Meeting Calendar</h1>
-        <p class="subtitle">Choose your name, color, and available dates. Everyone using the same room link sees the same calendar.</p>
+  <main class="app">
+    <section class="panel user-panel">
+      <h1>Simple Calendar</h1>
+      <p class="subtitle">Pick your available dates. Everyone using the same room link can see updates.</p>
+
+      <div class="form-grid">
+        <label>
+          Your name
+          <input id="userName" type="text" placeholder="Enter your name" />
+        </label>
+
+        <label>
+          Your color
+          <input id="userColor" type="color" value="#4f46e5" />
+        </label>
+
+        <label>
+          Room ID
+          <input id="roomId" type="text" value="default-room" />
+        </label>
       </div>
-      <div class="room-card">
-        <span>Room link</span>
-        <strong id="roomLabel">Loading...</strong>
-        <button id="copyLinkBtn" type="button">Copy Link</button>
+
+      <div class="actions">
+        <button id="saveProfileBtn">Save Profile</button>
+        <button id="clearMyDatesBtn" class="secondary">Clear My Dates</button>
       </div>
-    </section>
 
-    <section class="panel setup-panel">
-      <label>
-        Your name
-        <input id="userNameInput" type="text" placeholder="e.g. Siwon" maxlength="40" />
-      </label>
-
-      <label>
-        Your color
-        <input id="userColorInput" type="color" value="#4f46e5" />
-      </label>
-
-      <label>
-        Month
-        <input id="monthInput" type="month" />
-      </label>
-
-      <button id="saveProfileBtn" type="button">Save Profile</button>
-      <button id="clearMyDatesBtn" type="button" class="secondary">Clear My Dates</button>
+      <p id="statusMessage" class="status">Enter your name and choose dates.</p>
     </section>
 
     <section class="calendar-card">
       <header class="calendar-header">
-        <button id="prevMonthBtn" type="button" aria-label="Previous month">‹</button>
-        <h2 id="monthTitle">Month</h2>
-        <button id="nextMonthBtn" type="button" aria-label="Next month">›</button>
+        <button id="prevMonthBtn" class="nav-btn" aria-label="Previous month">‹</button>
+        <h2 id="monthLabel">Month Year</h2>
+        <button id="nextMonthBtn" class="nav-btn" aria-label="Next month">›</button>
       </header>
 
-      <div class="weekday-grid">
-        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      <div class="weekdays">
+        <div>Sun</div>
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
       </div>
 
       <div id="calendarGrid" class="calendar-grid"></div>
     </section>
 
-    <section class="panel">
-      <div class="section-title">
-        <h3>Participants</h3>
-        <span id="participantCount">0 people</span>
-      </div>
-      <div id="participantList" class="participant-list"></div>
-    </section>
-
-    <section class="panel">
-      <div class="section-title">
-        <h3>Best Dates</h3>
-        <span>Most overlap first</span>
-      </div>
-      <ol id="bestDateList" class="best-date-list"></ol>
+    <section class="panel legend-panel">
+      <h2>People</h2>
+      <div id="legendList" class="legend-list"></div>
     </section>
   </main>
 

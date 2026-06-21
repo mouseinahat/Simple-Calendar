@@ -1,58 +1,39 @@
-# Firebase Setup for Simple Calendar Step 4
+# Firebase Setup for Simple Calendar
 
-## 1. Create a Firebase project
+## 1. Create Firebase Project
 
-Go to Firebase Console and create a new project.
+1. Go to Firebase Console.
+2. Create a new project named `Simple Calendar`.
+3. Disable Google Analytics if you want a simpler setup.
 
-## 2. Add a Web app
+## 2. Add Web App
 
-Inside the Firebase project, add a Web app. Firebase will give you a config object like this:
+1. Click the Web icon `</>`.
+2. App nickname: `simple-calendar-web`.
+3. Copy the `firebaseConfig` object.
+4. Paste it into `script.js` where the placeholder config is located.
 
-```js
-const firebaseConfig = {
-  apiKey: "...",
-  authDomain: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
-};
-```
+## 3. Create Firestore Database
 
-Copy your real values into `script.js`.
+1. Go to **Firestore Database**.
+2. Click **Create database**.
+3. Choose **Test mode** for initial testing.
+4. Select a nearby region.
 
-## 3. Enable Firestore
-
-Open Firestore Database and create a database.
-
-For early development, you can start in test mode. Before real public use, replace test rules with safer rules.
-
-## 4. Data structure
+## 4. Firestore Data Shape
 
 The app stores data like this:
 
 ```txt
-rooms/{roomId}
-rooms/{roomId}/users/{userId}
+rooms
+  default-room
+    users
+      user-id-1
+        name: "Siwon"
+        color: "#4f46e5"
+        dates: ["2026-06-02", "2026-06-08"]
 ```
 
-Example user document:
+## 5. Important Warning
 
-```js
-{
-  name: "Siwon",
-  color: "#4f46e5",
-  dates: ["2026-06-12", "2026-06-13"],
-  updatedAt: serverTimestamp()
-}
-```
-
-## 5. Shared room links
-
-The room is controlled by the URL query string:
-
-```txt
-index.html?room=demo-room
-```
-
-Everyone who opens the same room link will see the same shared calendar data.
+Test mode is only for development. Later, replace it with safer Firestore security rules.

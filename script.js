@@ -1,18 +1,15 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
   getFirestore,
   collection,
   doc,
-  getDoc,
   setDoc,
+  deleteDoc,
   onSnapshot,
   serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-// 1) Create a Firebase project.
-// 2) Add a Web app in Firebase Console.
-// 3) Replace this object with your Firebase config.
-// 4) Enable Firestore Database in test mode while developing.
+// Replace this object with your own Firebase Web App config.
 const firebaseConfig = {
   apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
   authDomain: "simple-calendar-46931.firebaseapp.com",
@@ -25,284 +22,267 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+const monthLabel = document.getElementById("monthLabel");
 const calendarGrid = document.getElementById("calendarGrid");
-const monthTitle = document.getElementById("monthTitle");
-const monthInput = document.getElementById("monthInput");
-const userNameInput = document.getElementById("userNameInput");
-const userColorInput = document.getElementById("userColorInput");
-const saveProfileBtn = document.getElementById("saveProfileBtn");
-const clearMyDatesBtn = document.getElementById("clearMyDatesBtn");
 const prevMonthBtn = document.getElementById("prevMonthBtn");
 const nextMonthBtn = document.getElementById("nextMonthBtn");
-const roomLabel = document.getElementById("roomLabel");
-const copyLinkBtn = document.getElementById("copyLinkBtn");
-const participantCount = document.getElementById("participantCount");
-const participantList = document.getElementById("participantList");
-const bestDateList = document.getElementById("bestDateList");
+const userNameInput = document.getElementById("userName");
+const userColorInput = document.getElementById("userColor");
+const roomIdInput = document.getElementById("roomId");
+const saveProfileBtn = document.getElementById("saveProfileBtn");
+const clearMyDatesBtn = document.getElementById("clearMyDatesBtn");
+const statusMessage = document.getElementById("statusMessage");
+const legendList = document.getElementById("legendList");
 
-const dayNumber = document.createElement("div");
-dayNumber.className = "day-number";
-dayNumber.textContent = day;
-dayCell.appendChild(dayNumber);
-
-const params = new URLSearchParams(window.location.search);
-const roomId = params.get("room") || "demo-room";
-const userKey = `simple-calendar-user-id-${roomId}`;
-let currentUserId = localStorage.getItem(userKey);
-if (!currentUserId) {
-  currentUserId = crypto.randomUUID();
-  localStorage.setItem(userKey, currentUserId);
-}
-
-let currentDate = new Date();
-let currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+const today = new Date();
+let currentYear = today.getFullYear();
+let currentMonth = today.getMonth();
 let users = [];
-let myDates = new Set();
+let unsubscribeRoom = null;
 
-roomLabel.textContent = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+let myProfile = JSON.parse(localStorage.getItem("simpleCalendarProfile")) || {
+  id: crypto.randomUUID(),
+  name: "",
+  color: "#4f46e5",
+  roomId: "default-room"
+};
 
-function dateToKey(year, monthIndex, day) {
-  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+userNameInput.value = myProfile.name || "";
+userColorInput.value = myProfile.color || "#4f46e5";
+roomIdInput.value = myProfile.roomId || "default-room";
+
+function pad(number) {
+  return String(number).padStart(2, "0");
 }
 
-function parseMonth(monthString) {
-  const [year, month] = monthString.split("-").map(Number);
-  return new Date(year, month - 1, 1);
+function getDateKey(year, monthIndex, day) {
+  return `${year}-${pad(monthIndex + 1)}-${pad(day)}`;
 }
 
-function formatMonthTitle(monthString) {
-  return parseMonth(monthString).toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric"
-  });
+function getUserDocRef() {
+  const roomId = (roomIdInput.value || "default-room").trim();
+  return doc(db, "rooms", roomId, "users", myProfile.id);
 }
 
-function getMyProfile() {
-  return users.find((user) => user.id === currentUserId);
+function getUsersCollectionRef() {
+  const roomId = (roomIdInput.value || "default-room").trim();
+  return collection(db, "rooms", roomId, "users");
 }
 
-async function ensureRoomExists() {
-  const roomRef = doc(db, "rooms", roomId);
-  const roomSnap = await getDoc(roomRef);
-  if (!roomSnap.exists()) {
-    await setDoc(roomRef, {
-      title: "Simple Calendar Room",
-      createdAt: serverTimestamp()
-    });
-  }
+function saveProfileLocally() {
+  myProfile.name = userNameInput.value.trim();
+  myProfile.color = userColorInput.value;
+  myProfile.roomId = (roomIdInput.value || "default-room").trim();
+  localStorage.setItem("simpleCalendarProfile", JSON.stringify(myProfile));
 }
 
-async function saveMyProfile() {
-  const name = userNameInput.value.trim();
-  const color = userColorInput.value;
+async function saveProfileToFirestore(extraDates = null) {
+  saveProfileLocally();
 
-  if (!name) {
-    alert("Please enter your name first.");
+  if (!myProfile.name) {
+    statusMessage.textContent = "Please enter your name first.";
     return;
   }
 
-  const userRef = doc(db, "rooms", roomId, "users", currentUserId);
-  const existing = getMyProfile();
+  const currentUser = users.find((user) => user.id === myProfile.id);
+  const existingDates = currentUser?.dates || [];
 
-  await setDoc(userRef, {
-    name,
-    color,
-    dates: existing?.dates || Array.from(myDates),
-    updatedAt: serverTimestamp()
-  }, { merge: true });
+  await setDoc(
+    getUserDocRef(),
+    {
+      id: myProfile.id,
+      name: myProfile.name,
+      color: myProfile.color,
+      dates: extraDates || existingDates,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+
+  statusMessage.textContent = "Saved.";
 }
 
-async function saveMyDates() {
-  const name = userNameInput.value.trim();
-  if (!name) {
-    alert("Please enter your name and save your profile first.");
-    return;
-  }
+function listenToRoom() {
+  if (unsubscribeRoom) unsubscribeRoom();
 
-  const userRef = doc(db, "rooms", roomId, "users", currentUserId);
-  await setDoc(userRef, {
-    name,
-    color: userColorInput.value,
-    dates: Array.from(myDates).sort(),
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-}
+  saveProfileLocally();
 
-function listenToRoomUsers() {
-  const usersRef = collection(db, "rooms", roomId, "users");
-  onSnapshot(usersRef, (snapshot) => {
-    users = snapshot.docs.map((userDoc) => ({
-      id: userDoc.id,
-      ...userDoc.data()
-    }));
-
-    const me = getMyProfile();
-    if (me) {
-      userNameInput.value = me.name || "";
-      userColorInput.value = me.color || "#4f46e5";
-      myDates = new Set(me.dates || []);
-    }
-
+  unsubscribeRoom = onSnapshot(getUsersCollectionRef(), (snapshot) => {
+    users = snapshot.docs.map((document) => document.data());
     renderCalendar();
-    renderParticipants();
-    renderBestDates();
+    renderLegend();
   });
 }
 
-function getDateUsers(dateKey) {
-  return users.filter((user) => Array.isArray(user.dates) && user.dates.includes(dateKey));
-}
-
-function renderCalendar() {
-  calendarGrid.innerHTML = "";
-  monthTitle.textContent = formatMonthTitle(currentMonth);
-  monthInput.value = currentMonth;
-
-  const firstDate = parseMonth(currentMonth);
-  const year = firstDate.getFullYear();
-  const monthIndex = firstDate.getMonth();
-  const firstDayIndex = firstDate.getDay();
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-  for (let i = 0; i < firstDayIndex; i++) {
-    const empty = document.createElement("div");
-    empty.className = "day-cell empty";
-    calendarGrid.appendChild(empty);
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateKey = dateToKey(year, monthIndex, day);
-    const dateUsers = getDateUsers(dateKey);
-    const isMine = myDates.has(dateKey);
-
-    const cell = document.createElement("button");
-    cell.type = "button";
-    cell.className = `day-cell${isMine ? " mine" : ""}${dateUsers.length === users.length && users.length > 0 ? " best" : ""}`;
-    cell.setAttribute("aria-label", `Select ${dateKey}`);
-
-    const number = document.createElement("span");
-    number.className = "date-number";
-    number.textContent = day;
-    cell.appendChild(number);
-
-    if (dateUsers.length > 0) {
-      const badge = document.createElement("span");
-      badge.className = "count-badge";
-      badge.textContent = dateUsers.length;
-      cell.appendChild(badge);
-
-      const stack = document.createElement("div");
-      stack.className = "color-stack";
-      dateUsers.forEach((user) => {
-        const dot = document.createElement("span");
-        dot.className = "color-dot";
-        dot.style.backgroundColor = user.color || "#4f46e5";
-        dot.title = user.name || "Unnamed user";
-        stack.appendChild(dot);
-      });
-      cell.appendChild(stack);
-    }
-
-    cell.addEventListener("click", async () => {
-      if (myDates.has(dateKey)) {
-        myDates.delete(dateKey);
-      } else {
-        myDates.add(dateKey);
-      }
-      renderCalendar();
-      await saveMyDates();
-    });
-
-    calendarGrid.appendChild(cell);
-  }
-}
-
-function renderParticipants() {
-  participantCount.textContent = `${users.length} ${users.length === 1 ? "person" : "people"}`;
-  participantList.innerHTML = "";
+function renderLegend() {
+  legendList.innerHTML = "";
 
   if (users.length === 0) {
-    participantList.textContent = "No participants yet.";
+    legendList.innerHTML = `<p class="status">No users yet.</p>`;
     return;
   }
 
   users.forEach((user) => {
-    const chip = document.createElement("div");
-    chip.className = "participant-chip";
+    const item = document.createElement("div");
+    item.className = "legend-item";
 
     const dot = document.createElement("span");
-    dot.className = "color-dot";
-    dot.style.backgroundColor = user.color || "#4f46e5";
+    dot.className = "legend-dot";
+    dot.style.backgroundColor = user.color;
 
     const name = document.createElement("span");
-    name.textContent = user.name || "Unnamed user";
+    name.textContent = user.name;
 
-    chip.append(dot, name);
-    participantList.appendChild(chip);
+    item.appendChild(dot);
+    item.appendChild(name);
+    legendList.appendChild(item);
   });
 }
 
-function renderBestDates() {
-  bestDateList.innerHTML = "";
-  const firstDate = parseMonth(currentMonth);
-  const year = firstDate.getFullYear();
-  const monthIndex = firstDate.getMonth();
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+function renderCalendar() {
+  calendarGrid.innerHTML = "";
 
-  const rankedDates = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateKey = dateToKey(year, monthIndex, day);
-    const dateUsers = getDateUsers(dateKey);
-    if (dateUsers.length > 0) {
-      rankedDates.push({ dateKey, dateUsers });
-    }
+  const monthName = new Date(currentYear, currentMonth).toLocaleString("en-US", {
+    month: "long",
+    year: "numeric"
+  });
+  monthLabel.textContent = monthName;
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  for (let i = 0; i < firstDay; i++) {
+    const emptyCell = document.createElement("div");
+    emptyCell.className = "empty-day";
+    calendarGrid.appendChild(emptyCell);
   }
 
-  rankedDates
-    .sort((a, b) => b.dateUsers.length - a.dateUsers.length || a.dateKey.localeCompare(b.dateKey))
-    .slice(0, 5)
-    .forEach(({ dateKey, dateUsers }) => {
-      const item = document.createElement("li");
-      item.innerHTML = `<strong>${dateKey}</strong> <span>${dateUsers.length}/${users.length} available</span>`;
-      bestDateList.appendChild(item);
+  const dateCounts = {};
+  users.forEach((user) => {
+    (user.dates || []).forEach((date) => {
+      dateCounts[date] = (dateCounts[date] || 0) + 1;
+    });
+  });
+
+  const maxCount = Math.max(0, ...Object.values(dateCounts));
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateKey = getDateKey(currentYear, currentMonth, day);
+    const dayCell = document.createElement("button");
+    dayCell.className = "calendar-day";
+    dayCell.type = "button";
+
+    const dayNumber = document.createElement("div");
+    dayNumber.className = "day-number";
+    dayNumber.textContent = day;
+    dayCell.appendChild(dayNumber);
+
+    const count = dateCounts[dateKey] || 0;
+    if (count > 0) {
+      const countBadge = document.createElement("div");
+      countBadge.className = "availability-count";
+      countBadge.textContent = count;
+      dayCell.appendChild(countBadge);
+    }
+
+    if (count > 0 && count === maxCount) {
+      dayCell.classList.add("best-day");
+    }
+
+    const dotContainer = document.createElement("div");
+    dotContainer.className = "color-dots";
+
+    users.forEach((user) => {
+      if ((user.dates || []).includes(dateKey)) {
+        const dot = document.createElement("span");
+        dot.className = "color-dot";
+        dot.title = user.name;
+        dot.style.backgroundColor = user.color;
+        dotContainer.appendChild(dot);
+
+        if (user.id === myProfile.id) {
+          dayCell.classList.add("mine");
+          dayCell.style.setProperty("--my-color", user.color);
+        }
+      }
     });
 
-  if (rankedDates.length === 0) {
-    const item = document.createElement("li");
-    item.textContent = "No selected dates yet.";
-    bestDateList.appendChild(item);
+    dayCell.appendChild(dotContainer);
+
+    dayCell.addEventListener("click", async () => {
+      saveProfileLocally();
+
+      if (!myProfile.name) {
+        statusMessage.textContent = "Enter your name before selecting dates.";
+        userNameInput.focus();
+        return;
+      }
+
+      const currentUser = users.find((user) => user.id === myProfile.id);
+      const dates = new Set(currentUser?.dates || []);
+
+      if (dates.has(dateKey)) {
+        dates.delete(dateKey);
+      } else {
+        dates.add(dateKey);
+      }
+
+      await saveProfileToFirestore(Array.from(dates).sort());
+    });
+
+    calendarGrid.appendChild(dayCell);
   }
 }
 
-function moveMonth(offset) {
-  const monthDate = parseMonth(currentMonth);
-  monthDate.setMonth(monthDate.getMonth() + offset);
-  currentMonth = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}`;
-  renderCalendar();
-  renderBestDates();
-}
+saveProfileBtn.addEventListener("click", async () => {
+  await saveProfileToFirestore();
+  listenToRoom();
+});
 
-saveProfileBtn.addEventListener("click", saveMyProfile);
 clearMyDatesBtn.addEventListener("click", async () => {
-  myDates = new Set();
-  renderCalendar();
-  await saveMyDates();
-});
-prevMonthBtn.addEventListener("click", () => moveMonth(-1));
-nextMonthBtn.addEventListener("click", () => moveMonth(1));
-monthInput.addEventListener("change", () => {
-  currentMonth = monthInput.value;
-  renderCalendar();
-  renderBestDates();
-});
-copyLinkBtn.addEventListener("click", async () => {
-  const url = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-  await navigator.clipboard.writeText(url);
-  copyLinkBtn.textContent = "Copied!";
-  setTimeout(() => (copyLinkBtn.textContent = "Copy Link"), 1200);
+  saveProfileLocally();
+
+  if (!myProfile.name) {
+    statusMessage.textContent = "Please enter your name first.";
+    return;
+  }
+
+  await setDoc(
+    getUserDocRef(),
+    {
+      id: myProfile.id,
+      name: myProfile.name,
+      color: myProfile.color,
+      dates: [],
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+
+  statusMessage.textContent = "Your selected dates were cleared.";
 });
 
-monthInput.value = currentMonth;
-await ensureRoomExists();
-listenToRoomUsers();
+roomIdInput.addEventListener("change", listenToRoom);
+userColorInput.addEventListener("change", saveProfileLocally);
+userNameInput.addEventListener("change", saveProfileLocally);
+
+prevMonthBtn.addEventListener("click", () => {
+  currentMonth -= 1;
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear -= 1;
+  }
+  renderCalendar();
+});
+
+nextMonthBtn.addEventListener("click", () => {
+  currentMonth += 1;
+  if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear += 1;
+  }
+  renderCalendar();
+});
+
+listenToRoom();
 renderCalendar();
