@@ -12,7 +12,7 @@
       <div class="title-row">
         <div>
           <h1>Simple Calendar</h1>
-          <p class="subtitle">Create a room, share the link, and mark available dates together.</p>
+          <p class="subtitle">Create a password-protected room, share the link, and mark available dates together.</p>
         </div>
       </div>
 
@@ -23,38 +23,65 @@
           <p id="roomLink" class="room-link"></p>
         </div>
         <div class="room-actions">
-          <button id="createRoomBtn" type="button">Create New Room</button>
           <button id="copyRoomLinkBtn" type="button" class="secondary">Copy Room Link</button>
         </div>
       </div>
 
-      <div class="form-grid">
-        <label>
-          Your name
-          <input id="userName" type="text" placeholder="Enter your name" />
-        </label>
+      <div class="setup-grid">
+        <section class="mini-card">
+          <h2>Create Room</h2>
+          <label>
+            Room title
+            <input id="newRoomTitle" type="text" placeholder="친구 모임" />
+          </label>
+          <label>
+            Room password
+            <input id="newRoomPassword" type="password" placeholder="Set a password" />
+          </label>
+          <button id="createRoomBtn" type="button">Create New Room</button>
+        </section>
 
-        <label>
-          Your color
-          <input id="userColor" type="color" value="#4f46e5" />
-        </label>
-
-        <label>
-          Open another Room ID
-          <input id="roomId" type="text" value="default-room" />
-        </label>
+        <section class="mini-card">
+          <h2>Open Room</h2>
+          <label>
+            Room ID
+            <input id="roomId" type="text" value="default-room" />
+          </label>
+          <label>
+            Room password
+            <input id="roomPassword" type="password" placeholder="Enter room password" />
+          </label>
+          <button id="openRoomBtn" type="button">Unlock Room</button>
+        </section>
       </div>
 
-      <div class="actions">
-        <button id="saveProfileBtn" type="button">Save Profile</button>
-        <button id="openRoomBtn" type="button" class="secondary">Open Room</button>
-        <button id="clearMyDatesBtn" type="button" class="secondary">Clear My Dates</button>
+      <div id="lockedNotice" class="locked-notice">
+        Enter the correct room password to view and edit this calendar.
       </div>
 
-      <p id="statusMessage" class="status">Enter your name and choose dates.</p>
+      <div id="userControls" class="hidden">
+        <div class="form-grid two-columns">
+          <label>
+            Your name
+            <input id="userName" type="text" placeholder="Enter your name" />
+          </label>
+
+          <label>
+            Your color
+            <input id="userColor" type="color" value="#4f46e5" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="saveProfileBtn" type="button">Save Profile</button>
+          <button id="clearMyDatesBtn" type="button" class="secondary">Clear My Dates</button>
+        </div>
+      </div>
+
+      <p id="statusMessage" class="status">Create a room or unlock an existing room.</p>
     </section>
 
-    <section class="calendar-card">
+    <section id="calendarSection" class="calendar-card hidden">
       <header class="calendar-header">
         <button id="prevMonthBtn" class="nav-btn" aria-label="Previous month">‹</button>
         <h2 id="monthLabel">Month Year</h2>
@@ -74,7 +101,7 @@
       <div id="calendarGrid" class="calendar-grid"></div>
     </section>
 
-    <section class="panel legend-panel">
+    <section id="legendSection" class="panel legend-panel hidden">
       <h2>People in this room</h2>
       <div id="legendList" class="legend-list"></div>
     </section>

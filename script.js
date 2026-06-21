@@ -3,20 +3,21 @@ import {
   getFirestore,
   collection,
   doc,
+  getDoc,
   setDoc,
   onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 // Replace this object with your own Firebase Web App config.
-// If Step 4 already worked, copy the same firebaseConfig from your Step 4 script.js.
+// If Step 5 already worked, copy the same firebaseConfig from your Step 5 script.js.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
+  authDomain: "simple-calendar-46931.firebaseapp.com",
+  projectId: "simple-calendar-46931",
+  storageBucket: "simple-calendar-46931.firebasestorage.app",
+  messagingSenderId: "188294863466",
+  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -29,6 +30,9 @@ const nextMonthBtn = document.getElementById("nextMonthBtn");
 const userNameInput = document.getElementById("userName");
 const userColorInput = document.getElementById("userColor");
 const roomIdInput = document.getElementById("roomId");
+const roomPasswordInput = document.getElementById("roomPassword");
+const newRoomTitleInput = document.getElementById("newRoomTitle");
+const newRoomPasswordInput = document.getElementById("newRoomPassword");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const clearMyDatesBtn = document.getElementById("clearMyDatesBtn");
 const statusMessage = document.getElementById("statusMessage");
@@ -38,12 +42,18 @@ const roomLink = document.getElementById("roomLink");
 const createRoomBtn = document.getElementById("createRoomBtn");
 const copyRoomLinkBtn = document.getElementById("copyRoomLinkBtn");
 const openRoomBtn = document.getElementById("openRoomBtn");
+const calendarSection = document.getElementById("calendarSection");
+const legendSection = document.getElementById("legendSection");
+const userControls = document.getElementById("userControls");
+const lockedNotice = document.getElementById("lockedNotice");
 
 const today = new Date();
 let currentYear = today.getFullYear();
 let currentMonth = today.getMonth();
 let users = [];
 let unsubscribeRoom = null;
+let isRoomUnlocked = false;
+let currentRoomData = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomFromUrl = sanitizeRoomId(urlParams.get("room")) || "default-room";
@@ -72,13 +82,11 @@ function sanitizeRoomId(value) {
     .replace(/[^a-z0-9-]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 40);
+    .slice(0, 80);
 }
 
 function createRandomRoomId() {
-  const firstPart = Math.random().toString(36).slice(2, 8);
-  const secondPart = Date.now().toString(36).slice(-4);
-  return `room-${firstPart}-${secondPart}`;
+  return crypto.randomUUID();
 }
 
 function getDateKey(year, monthIndex, day) {
@@ -104,9 +112,35 @@ function getRoomUrl(roomId = currentRoomId) {
 }
 
 function updateRoomDisplay() {
-  currentRoomLabel.textContent = currentRoomId;
+  const title = currentRoomData?.title ? ` — ${currentRoomData.title}` : "";
+  currentRoomLabel.textContent = `${currentRoomId}${title}`;
   roomIdInput.value = currentRoomId;
   roomLink.textContent = getRoomUrl(currentRoomId);
+}
+
+function setLockedUI(message = "Enter the correct room password to view and edit this calendar.") {
+  isRoomUnlocked = false;
+  users = [];
+  currentRoomData = null;
+  if (unsubscribeRoom) unsubscribeRoom();
+  unsubscribeRoom = null;
+
+  calendarSection.classList.add("hidden");
+  legendSection.classList.add("hidden");
+  userControls.classList.add("hidden");
+  lockedNotice.classList.remove("hidden");
+  lockedNotice.textContent = message;
+  statusMessage.textContent = message;
+  renderCalendar();
+  renderLegend();
+}
+
+function setUnlockedUI() {
+  isRoomUnlocked = true;
+  calendarSection.classList.remove("hidden");
+  legendSection.classList.remove("hidden");
+  userControls.classList.remove("hidden");
+  lockedNotice.classList.add("hidden");
 }
 
 function saveProfileLocally() {
@@ -115,27 +149,18 @@ function saveProfileLocally() {
   localStorage.setItem("simpleCalendarProfile", JSON.stringify(myProfile));
 }
 
-async function ensureRoomExists() {
-  await setDoc(
-    getRoomDocRef(),
-    {
-      id: currentRoomId,
-      updatedAt: serverTimestamp(),
-      createdAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-}
-
 async function saveProfileToFirestore(extraDates = null) {
+  if (!isRoomUnlocked) {
+    statusMessage.textContent = "Unlock the room before saving.";
+    return;
+  }
+
   saveProfileLocally();
 
   if (!myProfile.name) {
     statusMessage.textContent = "Please enter your name first.";
     return;
   }
-
-  await ensureRoomExists();
 
   const currentUser = users.find((user) => user.id === myProfile.id);
   const existingDates = currentUser?.dates || [];
@@ -155,11 +180,49 @@ async function saveProfileToFirestore(extraDates = null) {
   statusMessage.textContent = "Saved.";
 }
 
-async function openRoom(roomId, updateUrl = true) {
-  const cleanedRoomId = sanitizeRoomId(roomId) || "default-room";
-  currentRoomId = cleanedRoomId;
-  users = [];
+async function createRoom() {
+  const password = newRoomPasswordInput.value.trim();
+  const title = newRoomTitleInput.value.trim() || "Untitled Room";
 
+  if (!password) {
+    statusMessage.textContent = "Please set a room password.";
+    newRoomPasswordInput.focus();
+    return;
+  }
+
+  const newRoomId = createRandomRoomId();
+  currentRoomId = newRoomId;
+  currentRoomData = {
+    id: newRoomId,
+    title,
+    password
+  };
+
+  await setDoc(getRoomDocRef(newRoomId), {
+    id: newRoomId,
+    title,
+    password,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+
+  roomPasswordInput.value = password;
+  newRoomPasswordInput.value = "";
+  newRoomTitleInput.value = "";
+  await unlockRoom(newRoomId, password, true);
+  statusMessage.textContent = "New password-protected room created. Share the room link and password.";
+}
+
+async function unlockRoom(roomId, password, updateUrl = true) {
+  const cleanedRoomId = sanitizeRoomId(roomId);
+  const enteredPassword = String(password || "").trim();
+
+  if (!cleanedRoomId) {
+    statusMessage.textContent = "Please enter a room ID.";
+    return;
+  }
+
+  currentRoomId = cleanedRoomId;
   updateRoomDisplay();
 
   if (updateUrl) {
@@ -167,17 +230,34 @@ async function openRoom(roomId, updateUrl = true) {
     window.history.pushState({}, "", newUrl);
   }
 
+  const roomSnapshot = await getDoc(getRoomDocRef());
+
+  if (!roomSnapshot.exists()) {
+    setLockedUI("Room not found. Create a new room or check the link.");
+    return;
+  }
+
+  const roomData = roomSnapshot.data();
+  const actualPassword = String(roomData.password || "");
+
+  if (!enteredPassword || enteredPassword !== actualPassword) {
+    setLockedUI("Wrong password or missing password. Please try again.");
+    roomPasswordInput.focus();
+    return;
+  }
+
+  currentRoomData = roomData;
+  setUnlockedUI();
+  updateRoomDisplay();
+
   if (unsubscribeRoom) unsubscribeRoom();
-
-  await ensureRoomExists();
-
   unsubscribeRoom = onSnapshot(getUsersCollectionRef(), (snapshot) => {
     users = snapshot.docs.map((document) => document.data());
     renderCalendar();
     renderLegend();
   });
 
-  statusMessage.textContent = `Opened room: ${currentRoomId}`;
+  statusMessage.textContent = `Unlocked room: ${currentRoomId}`;
 }
 
 function renderLegend() {
@@ -276,6 +356,11 @@ function renderCalendar() {
     dayCell.appendChild(dotContainer);
 
     dayCell.addEventListener("click", async () => {
+      if (!isRoomUnlocked) {
+        statusMessage.textContent = "Unlock the room before selecting dates.";
+        return;
+      }
+
       saveProfileLocally();
 
       if (!myProfile.name) {
@@ -300,20 +385,16 @@ function renderCalendar() {
   }
 }
 
-createRoomBtn.addEventListener("click", async () => {
-  const newRoomId = createRandomRoomId();
-  await openRoom(newRoomId, true);
-  statusMessage.textContent = "New room created. Share the room link with others.";
-});
+createRoomBtn.addEventListener("click", createRoom);
 
 copyRoomLinkBtn.addEventListener("click", async () => {
   const link = getRoomUrl(currentRoomId);
   await navigator.clipboard.writeText(link);
-  statusMessage.textContent = "Room link copied.";
+  statusMessage.textContent = "Room link copied. Share the password separately.";
 });
 
 openRoomBtn.addEventListener("click", async () => {
-  await openRoom(roomIdInput.value, true);
+  await unlockRoom(roomIdInput.value, roomPasswordInput.value, true);
 });
 
 saveProfileBtn.addEventListener("click", async () => {
@@ -321,6 +402,11 @@ saveProfileBtn.addEventListener("click", async () => {
 });
 
 clearMyDatesBtn.addEventListener("click", async () => {
+  if (!isRoomUnlocked) {
+    statusMessage.textContent = "Unlock the room before clearing dates.";
+    return;
+  }
+
   saveProfileLocally();
 
   if (!myProfile.name) {
@@ -345,7 +431,13 @@ clearMyDatesBtn.addEventListener("click", async () => {
 
 roomIdInput.addEventListener("keydown", async (event) => {
   if (event.key === "Enter") {
-    await openRoom(roomIdInput.value, true);
+    await unlockRoom(roomIdInput.value, roomPasswordInput.value, true);
+  }
+});
+
+roomPasswordInput.addEventListener("keydown", async (event) => {
+  if (event.key === "Enter") {
+    await unlockRoom(roomIdInput.value, roomPasswordInput.value, true);
   }
 });
 
@@ -373,9 +465,11 @@ nextMonthBtn.addEventListener("click", () => {
 window.addEventListener("popstate", async () => {
   const params = new URLSearchParams(window.location.search);
   const roomId = sanitizeRoomId(params.get("room")) || "default-room";
-  await openRoom(roomId, false);
+  currentRoomId = roomId;
+  updateRoomDisplay();
+  setLockedUI("Enter the room password again to continue.");
 });
 
 updateRoomDisplay();
-openRoom(currentRoomId, false);
+setLockedUI("Enter the room password, or create a new room.");
 renderCalendar();

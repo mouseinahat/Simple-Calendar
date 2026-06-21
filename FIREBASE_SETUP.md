@@ -1,39 +1,10 @@
-# Firebase Setup for Simple Calendar - Step 5
+# Firebase Setup for Step 6
 
-Step 5 adds independent calendar rooms.
+This version adds password-protected calendar rooms.
 
-## What changed
+## 1. Copy your Firebase config
 
-The URL now controls the room:
-
-```txt
-/simple-calendar/?room=abc123
-```
-
-Each room stores separate data in Firestore:
-
-```txt
-rooms
-  abc123
-    users
-      user-id-1
-        name: "Siwon"
-        color: "#4f46e5"
-        dates: ["2026-06-02", "2026-06-08"]
-
-  another-room
-    users
-      user-id-2
-        name: "Minji"
-        color: "#dc2626"
-        dates: ["2026-06-10"]
-```
-
-## Important
-
-If Step 4 already worked, copy the same `firebaseConfig` object from your old `script.js` into this Step 5 `script.js`.
-
-Replace this part:
+Open `script.js` and replace:
 
 ```js
 const firebaseConfig = {
@@ -46,17 +17,45 @@ const firebaseConfig = {
 };
 ```
 
-with your real Firebase values.
+with the Firebase config from your project.
 
-## How to use
+## 2. Firestore data structure
 
-1. Open the website.
-2. Click **Create New Room**.
-3. Click **Copy Room Link**.
-4. Send that link to other people.
-5. Everyone who opens the same link will see the same room data.
+```txt
+rooms
+ └─ roomId
+      id: roomId
+      title: "친구 모임"
+      password: "1234"
+      users
+       └─ userId
+            name: "Siwon"
+            color: "#4f46e5"
+            dates: ["2026-06-12", "2026-06-13"]
+```
 
-## Limitation
+## 3. MVP security note
 
-There is no password yet. Anyone with the room link can open the room.
-Password protection will be added in Step 6.
+This is MVP password protection.
+
+The password check happens in browser JavaScript. This is okay for early testing with friends, but it is not strong security.
+
+For a real public app, add stronger protection later using one of these:
+
+- Firebase Authentication
+- Firestore Security Rules
+- Firebase Cloud Functions / backend password verification
+- Firebase App Check
+
+## 4. GitHub Pages
+
+Upload these files to your repository root:
+
+```txt
+index.html
+style.css
+script.js
+FIREBASE_SETUP.md
+```
+
+Then enable GitHub Pages from the `main` branch and `/root` folder.
