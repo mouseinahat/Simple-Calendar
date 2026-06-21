@@ -14,12 +14,12 @@ import {
 // 3) Replace this object with your Firebase config.
 // 4) Enable Firestore Database in test mode while developing.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
+  authDomain: "simple-calendar-46931.firebaseapp.com",
+  projectId: "simple-calendar-46931",
+  storageBucket: "simple-calendar-46931.firebasestorage.app",
+  messagingSenderId: "188294863466",
+  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
 };
 
 const app = initializeApp(firebaseConfig);
