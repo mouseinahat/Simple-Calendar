@@ -40,6 +40,11 @@ const participantCount = document.getElementById("participantCount");
 const participantList = document.getElementById("participantList");
 const bestDateList = document.getElementById("bestDateList");
 
+const dayNumber = document.createElement("div");
+dayNumber.className = "day-number";
+dayNumber.textContent = day;
+dayCell.appendChild(dayNumber);
+
 const params = new URLSearchParams(window.location.search);
 const roomId = params.get("room") || "demo-room";
 const userKey = `simple-calendar-user-id-${roomId}`;
