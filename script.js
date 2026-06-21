@@ -20,6 +20,16 @@ const firebaseConfig = {
   appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
 };
 
+
+window.addEventListener("error", (event) => {
+  const status = document.getElementById("statusMessage");
+  if (status) status.textContent = `JavaScript 오류: ${event.message}`;
+});
+window.addEventListener("unhandledrejection", (event) => {
+  const status = document.getElementById("statusMessage");
+  if (status) status.textContent = `Firebase/Promise 오류: ${event.reason?.message || event.reason}`;
+});
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -458,7 +468,7 @@ async function createRoom() {
     }
 
     createRoomBtn.disabled = true;
-    createRoomBtn.textContent = "생성 중...";
+    createRoomBtn.textContent = currentLanguage === "ko" ? "생성 중..." : "Creating...";
     statusMessage.textContent = "방을 생성하는 중입니다...";
 
     const newRoomId = createRandomRoomId(title);
@@ -486,7 +496,7 @@ async function createRoom() {
     showError("방 만들기", error);
   } finally {
     createRoomBtn.disabled = false;
-    createRoomBtn.textContent = "새 방 만들기";
+    createRoomBtn.textContent = t("createRoomBtn");
   }
 }
 
