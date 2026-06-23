@@ -370,6 +370,30 @@ async function toggleBulkDates(datesToToggle, label) {
     showError("빠른 선택", error);
   }
 }
+
+function updateQuickSelectButtonStates() {
+  if (!bulkSelectPanel) return;
+
+  const selectedDates = getCurrentUserDates();
+  const buttons = bulkSelectPanel.querySelectorAll("button[data-weekday], button[data-select-all]");
+
+  buttons.forEach((button) => {
+    let dates = [];
+
+    if (button.dataset.selectAll === "true") {
+      dates = getDatesInCurrentMonthByWeekday(null);
+    } else if (button.dataset.weekday !== undefined) {
+      dates = getDatesInCurrentMonthByWeekday(Number(button.dataset.weekday));
+    }
+
+    const allSelected =
+      dates.length > 0 &&
+      dates.every((dateKey) => selectedDates.has(dateKey));
+
+    button.classList.toggle("quick-selected", allSelected);
+  });
+}
+
 function getRoomDocRef(roomId = currentRoomId) {
   return doc(db, "rooms", roomId);
 }
