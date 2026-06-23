@@ -310,74 +310,66 @@ function getDatesInCurrentMonthByWeekday(weekday) {
   return dates;
 }
 
-async function addBulkDatesToMyCalendar(datesToAdd, label) {
+async function toggleBulkDates(datesToToggle, label) {
   try {
-    if (!isRoomUnlocked) {
-      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 방을 먼저 열어주세요." : "Open a room before using quick select.";
-      return;
-    }
+    if (!isRoomUnlocked) return;
 
     saveProfileLocally();
 
-    if (!myProfile.name) {
-      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 이름을 입력해주세요." : "Enter your name before using quick select.";
-      userNameInput.focus();
-      return;
+    const currentDates = getCurrentUserDates();
+
+    const allSelected =
+      datesToToggle.length > 0 &&
+      datesToToggle.every(date => currentDates.has(date));
+
+    const updatedDates = new Set(currentDates);
+
+    if (allSelected) {
+      datesToToggle.forEach(date => updatedDates.delete(date));
+    } else {
+      datesToToggle.forEach(date => updatedDates.add(date));
     }
 
-    if (!datesToAdd.length) {
-      statusMessage.textContent = currentLanguage === "ko" ? "현재 월에 선택할 날짜가 없습니다." : "There are no dates to select in the current month.";
-      return;
-    }
+    const sortedDates = [...updatedDates].sort();
 
-    const dates = getCurrentUserDates();
-    datesToAdd.forEach((dateKey) => dates.add(dateKey));
-    const sortedDates = Array.from(dates).sort();
+    const existingIndex = users.findIndex(
+      user => user.id === myProfile.id
+    );
 
-    // Optimistic UI update: reflect the quick-select result immediately,
-    // even before Firestore's real-time listener returns.
-    const existingIndex = users.findIndex((user) => user.id === myProfile.id);
     const nextUser = {
       id: myProfile.id,
       name: myProfile.name,
       color: myProfile.color,
       dates: sortedDates
     };
+
     if (existingIndex >= 0) {
-      users[existingIndex] = { ...users[existingIndex], ...nextUser };
+      users[existingIndex] = {
+        ...users[existingIndex],
+        ...nextUser
+      };
     } else {
       users.push(nextUser);
     }
+
     renderCalendar();
     renderLegend();
     renderBestDates();
     updateQuickSelectButtonStates();
 
-    await saveProfileToFirestore(sortedDates, { silent: true });
-    statusMessage.textContent = currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`;
+    await saveProfileToFirestore(sortedDates, {
+      silent: true
+    });
+
+    statusMessage.textContent =
+      allSelected
+        ? `${label} 선택 해제`
+        : `${label} 선택 완료`;
+
   } catch (error) {
-    showError(currentLanguage === "ko" ? "빠른 선택" : "Quick select", error);
+    showError("빠른 선택", error);
   }
 }
-
-function updateQuickSelectButtonStates() {
-  if (!bulkSelectPanel) return;
-  const selectedDates = getCurrentUserDates();
-  const buttons = bulkSelectPanel.querySelectorAll("button[data-weekday], button[data-select-all]");
-
-  buttons.forEach((button) => {
-    let dates = [];
-    if (button.dataset.selectAll === "true") {
-      dates = getDatesInCurrentMonthByWeekday(null);
-    } else if (button.dataset.weekday !== undefined) {
-      dates = getDatesInCurrentMonthByWeekday(Number(button.dataset.weekday));
-    }
-
-    const allSelected = dates.length > 0 && dates.every((dateKey) => selectedDates.has(dateKey));
-    button.classList.toggle("quick-selected", allSelected);
-  });
-}
-
 function getRoomDocRef(roomId = currentRoomId) {
   return doc(db, "rooms", roomId);
 }
@@ -858,7 +850,7 @@ bulkSelectPanel.addEventListener("click", async (event) => {
 
   if (button.dataset.selectAll === "true") {
     const allDates = getDatesInCurrentMonthByWeekday(null);
-    await addBulkDatesToMyCalendar(allDates, currentLanguage === "ko" ? "이번 달 모든" : "All this month");
+    await toggleBulkDates(allDates, currentLanguage === "ko" ? "이번 달 모든" : "All this month");
     return;
   }
 
@@ -866,7 +858,7 @@ bulkSelectPanel.addEventListener("click", async (event) => {
     const weekday = Number(button.dataset.weekday);
     const weekdayLabels = t("weekdaysLong");
     const dates = getDatesInCurrentMonthByWeekday(weekday);
-    await addBulkDatesToMyCalendar(dates, currentLanguage === "ko" ? `이번 달 ${weekdayLabels[weekday]}` : `This month ${weekdayLabels[weekday]}`);
+    await toggleBulkDates(dates, currentLanguage === "ko" ? `이번 달 ${weekdayLabels[weekday]}` : `This month ${weekdayLabels[weekday]}`);
   }
 });
 
