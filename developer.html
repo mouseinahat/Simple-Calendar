@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Calendar Developer Admin</title>
+  <link rel="stylesheet" href="developer.css" />
+</head>
+<body>
+  <main class="admin-app">
+    <section class="hero-panel">
+      <p class="eyebrow">Simple Calendar</p>
+      <h1>Developer Administration</h1>
+      <p class="subtitle">MVP 관리자 페이지입니다. 열린 방 목록을 확인하고 방을 삭제 처리할 수 있습니다.</p>
+      <p class="warning">주의: GitHub Pages는 프론트엔드 전용이므로 이 비밀번호 방식은 강한 보안이 아닙니다. 실제 서비스에서는 Firebase Auth와 Security Rules가 필요합니다.</p>
+    </section>
+
+    <section id="loginPanel" class="panel">
+      <h2>Developer Login</h2>
+      <label>
+        <span>Developer Password</span>
+        <input id="developerPasswordInput" type="password" placeholder="관리자 비밀번호 입력" />
+      </label>
+      <button id="loginBtn" type="button">Enter Admin Page</button>
+      <p id="loginStatus" class="status"></p>
+    </section>
+
+    <section id="adminPanel" class="panel hidden">
+      <div class="admin-header">
+        <div>
+          <h2>Calendar Rooms</h2>
+          <p id="roomCount" class="subtitle">Loading...</p>
+        </div>
+        <div class="actions">
+          <button id="refreshBtn" type="button" class="secondary">Refresh</button>
+          <a href="./" class="home-link">Back to Calendar</a>
+        </div>
+      </div>
+
+      <div id="roomsList" class="rooms-list"></div>
+      <p id="adminStatus" class="status"></p>
+    </section>
+  </main>
+
+  <script type="module" src="developer.js?v=090"></script>
+</body>
+</html>
