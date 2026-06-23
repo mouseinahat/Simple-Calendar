@@ -435,3 +435,47 @@ button:disabled { cursor: not-allowed; opacity: 0.65; }
 .calendar-day.saturday .day-number {
   color: #2563eb;
 }
+@media (max-width: 430px) {
+  .calendar-day,
+  .empty-day {
+    min-height: 96px;
+  }
+
+  .calendar-day {
+    padding: 0;
+    position: relative;
+  }
+
+  .day-number {
+    top: 8px;
+    left: 8px;
+    font-size: 15px;
+  }
+
+  .availability-count {
+    top: 34px;
+    right: 6px;
+    min-width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+
+  .color-dots {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+    margin-top: 0;
+    gap: 3px;
+  }
+
+  .color-dot {
+    width: 11px;
+    height: 11px;
+    border-width: 2px;
+  }
+
+  .calendar-day.mine {
+    outline-width: 3px;
+    outline-offset: -3px;
+  }
+}
