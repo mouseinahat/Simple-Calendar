@@ -424,3 +424,14 @@ button:disabled { cursor: not-allowed; opacity: 0.65; }
   .weekday-select-buttons button { min-width: 0; padding: 0 12px; }
   .weekday-select-buttons .all-select-btn { grid-column: span 2; }
 }
+
+
+.weekdays div:first-child,
+.calendar-day.sunday .day-number {
+  color: #dc2626;
+}
+
+.weekdays div:last-child,
+.calendar-day.saturday .day-number {
+  color: #2563eb;
+}

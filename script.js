@@ -1,10 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
-  getAuth,
-  signInAnonymously,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import {
   getFirestore,
   collection,
   doc,
@@ -37,11 +32,7 @@ window.addEventListener("unhandledrejection", (event) => {
 
 assertFirebaseConfig();
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
-
-let authReady = false;
-let anonymousUserId = null;
 
 const monthLabel = document.getElementById("monthLabel");
 const calendarGrid = document.getElementById("calendarGrid");
@@ -204,40 +195,8 @@ function assertFirebaseConfig() {
 
 function firebaseHelpText() {
   return currentLanguage === "ko"
-    ? "Firebase 연결을 확인하세요: 1) Google Cloud API Key 웹사이트 제한에 https://mouseinahat.github.io/* 와 https://mouseinahat.github.io/Simple-Calendar/* 추가 2) API 제한에 Cloud Firestore API와 Identity Toolkit API 허용 3) Firebase Authentication에서 Anonymous provider 활성화 4) Firestore Rules가 request.auth != null을 허용하는지 확인"
-    : "Check Firebase: 1) Add https://mouseinahat.github.io/* and https://mouseinahat.github.io/Simple-Calendar/* to API key website restrictions 2) Allow Cloud Firestore API and Identity Toolkit API 3) Enable Anonymous provider in Firebase Authentication 4) Check Firestore Rules allow request.auth != null.";
-}
-
-async function ensureAnonymousAuth() {
-  if (authReady && auth.currentUser) {
-    return auth.currentUser;
-  }
-
-  return new Promise((resolve, reject) => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      async (user) => {
-        try {
-          if (user) {
-            authReady = true;
-            anonymousUserId = user.uid;
-            unsubscribe();
-            resolve(user);
-            return;
-          }
-
-          await signInAnonymously(auth);
-        } catch (error) {
-          unsubscribe();
-          reject(error);
-        }
-      },
-      (error) => {
-        unsubscribe();
-        reject(error);
-      }
-    );
-  });
+    ? "Firebase 연결을 확인하세요: 1) Google Cloud API Key 웹사이트 제한에 https://mouseinahat.github.io/* 와 https://mouseinahat.github.io/Simple-Calendar/* 추가 2) API 제한에 Cloud Firestore API 허용 3) Firestore Rules가 개발 중 read/write 허용인지 확인"
+    : "Check Firebase: 1) Add https://mouseinahat.github.io/* and https://mouseinahat.github.io/Simple-Calendar/* to API key website restrictions 2) Allow Cloud Firestore API 3) Check Firestore Rules during development.";
 }
 
 userNameInput.value = myProfile.name || "";
@@ -351,86 +310,70 @@ function getDatesInCurrentMonthByWeekday(weekday) {
   return dates;
 }
 
-async function toggleBulkDates(datesToToggle, label) {
+async function addBulkDatesToMyCalendar(datesToAdd, label) {
   try {
-    if (!isRoomUnlocked) return;
+    if (!isRoomUnlocked) {
+      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 방을 먼저 열어주세요." : "Open a room before using quick select.";
+      return;
+    }
 
     saveProfileLocally();
 
-    const currentDates = getCurrentUserDates();
-
-    const allSelected =
-      datesToToggle.length > 0 &&
-      datesToToggle.every(date => currentDates.has(date));
-
-    const updatedDates = new Set(currentDates);
-
-    if (allSelected) {
-      datesToToggle.forEach(date => updatedDates.delete(date));
-    } else {
-      datesToToggle.forEach(date => updatedDates.add(date));
+    if (!myProfile.name) {
+      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 이름을 입력해주세요." : "Enter your name before using quick select.";
+      userNameInput.focus();
+      return;
     }
 
-    const sortedDates = [...updatedDates].sort();
+    if (!datesToAdd.length) {
+      statusMessage.textContent = currentLanguage === "ko" ? "현재 월에 선택할 날짜가 없습니다." : "There are no dates to select in the current month.";
+      return;
+    }
 
-    const existingIndex = users.findIndex(
-      user => user.id === myProfile.id
-    );
+    const dates = getCurrentUserDates();
+    datesToAdd.forEach((dateKey) => dates.add(dateKey));
+    const sortedDates = Array.from(dates).sort();
 
+    // Optimistic UI update: reflect the quick-select result immediately,
+    // even before Firestore's real-time listener returns.
+    const existingIndex = users.findIndex((user) => user.id === myProfile.id);
     const nextUser = {
       id: myProfile.id,
       name: myProfile.name,
       color: myProfile.color,
       dates: sortedDates
     };
-
     if (existingIndex >= 0) {
-      users[existingIndex] = {
-        ...users[existingIndex],
-        ...nextUser
-      };
+      users[existingIndex] = { ...users[existingIndex], ...nextUser };
     } else {
       users.push(nextUser);
     }
-
     renderCalendar();
     renderLegend();
     renderBestDates();
     updateQuickSelectButtonStates();
 
-    await saveProfileToFirestore(sortedDates, {
-      silent: true
-    });
-
-    statusMessage.textContent =
-      allSelected
-        ? `${label} 선택 해제`
-        : `${label} 선택 완료`;
-
+    await saveProfileToFirestore(sortedDates, { silent: true });
+    statusMessage.textContent = currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`;
   } catch (error) {
-    showError("빠른 선택", error);
+    showError(currentLanguage === "ko" ? "빠른 선택" : "Quick select", error);
   }
 }
 
 function updateQuickSelectButtonStates() {
   if (!bulkSelectPanel) return;
-
   const selectedDates = getCurrentUserDates();
   const buttons = bulkSelectPanel.querySelectorAll("button[data-weekday], button[data-select-all]");
 
   buttons.forEach((button) => {
     let dates = [];
-
     if (button.dataset.selectAll === "true") {
       dates = getDatesInCurrentMonthByWeekday(null);
     } else if (button.dataset.weekday !== undefined) {
       dates = getDatesInCurrentMonthByWeekday(Number(button.dataset.weekday));
     }
 
-    const allSelected =
-      dates.length > 0 &&
-      dates.every((dateKey) => selectedDates.has(dateKey));
-
+    const allSelected = dates.length > 0 && dates.every((dateKey) => selectedDates.has(dateKey));
     button.classList.toggle("quick-selected", allSelected);
   });
 }
@@ -506,7 +449,6 @@ function saveProfileLocally() {
 
 async function saveProfileToFirestore(extraDates = null, options = {}) {
   try {
-    await ensureAnonymousAuth();
   if (!isRoomUnlocked) {
     statusMessage.textContent = "저장하기 전에 방을 먼저 열어주세요.";
     return;
@@ -544,7 +486,6 @@ async function saveProfileToFirestore(extraDates = null, options = {}) {
 
 async function createRoom() {
   try {
-    await ensureAnonymousAuth();
     const password = newRoomPasswordInput.value.trim();
     const title = newRoomTitleInput.value.trim() || "제목 없는 방";
 
@@ -589,7 +530,6 @@ async function createRoom() {
 
 async function unlockRoom(roomId, password, updateUrl = true) {
   try {
-    await ensureAnonymousAuth();
     const cleanedRoomId = sanitizeRoomId(roomId);
     const enteredPassword = String(password || "").trim();
 
@@ -615,16 +555,6 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     }
 
     const roomData = roomSnapshot.data();
-
-    if (roomData.deleted === true) {
-      setLockedUI(
-        currentLanguage === "ko"
-          ? "이 방은 삭제되었습니다."
-          : "This room has been deleted."
-      );
-      return;
-    }
-
     const actualPassword = String(roomData.password || "");
 
     if (!enteredPassword || enteredPassword !== actualPassword) {
@@ -805,6 +735,17 @@ function renderCalendar() {
     dayCell.className = "calendar-day";
     dayCell.type = "button";
 
+const weekday = new Date(currentYear, currentMonth, day).getDay();
+
+if (weekday === 0) {
+  dayCell.classList.add("sunday");
+}
+
+if (weekday === 6) {
+  dayCell.classList.add("saturday");
+}
+
+
     const dayNumber = document.createElement("div");
     dayNumber.className = "day-number";
     dayNumber.textContent = day;
@@ -928,7 +869,7 @@ bulkSelectPanel.addEventListener("click", async (event) => {
 
   if (button.dataset.selectAll === "true") {
     const allDates = getDatesInCurrentMonthByWeekday(null);
-    await toggleBulkDates(allDates, currentLanguage === "ko" ? "이번 달 모든" : "All this month");
+    await addBulkDatesToMyCalendar(allDates, currentLanguage === "ko" ? "이번 달 모든" : "All this month");
     return;
   }
 
@@ -936,7 +877,7 @@ bulkSelectPanel.addEventListener("click", async (event) => {
     const weekday = Number(button.dataset.weekday);
     const weekdayLabels = t("weekdaysLong");
     const dates = getDatesInCurrentMonthByWeekday(weekday);
-    await toggleBulkDates(dates, currentLanguage === "ko" ? `이번 달 ${weekdayLabels[weekday]}` : `This month ${weekdayLabels[weekday]}`);
+    await addBulkDatesToMyCalendar(dates, currentLanguage === "ko" ? `이번 달 ${weekdayLabels[weekday]}` : `This month ${weekdayLabels[weekday]}`);
   }
 });
 
@@ -1011,23 +952,8 @@ window.addEventListener("popstate", async () => {
 if (currentRoomId) {
   roomLinkInput.value = getRoomUrl(currentRoomId);
 }
-
-ensureAnonymousAuth()
-  .then(() => {
-    applyLanguage(currentLanguage);
-    updateRoomDisplay();
-    setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
-    renderCalendar();
-    renderBestDates();
-    statusMessage.textContent = currentRoomId
-      ? "익명 로그인이 완료되었습니다. 방 비밀번호를 입력하세요."
-      : "익명 로그인이 완료되었습니다. 새 방을 만들거나 공유받은 링크를 열어주세요.";
-  })
-  .catch((error) => {
-    showError("익명 로그인", error);
-    applyLanguage(currentLanguage);
-    updateRoomDisplay();
-    setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
-    renderCalendar();
-    renderBestDates();
-  });
+applyLanguage(currentLanguage);
+updateRoomDisplay();
+setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
+renderCalendar();
+renderBestDates();
