@@ -20,7 +20,7 @@ const firebaseConfig = {
 
 // MVP-only password. Change this before uploading.
 // This is not strong security because frontend code is public on GitHub Pages.
-const DEVELOPER_PASSWORD = "12345";
+const DEVELOPER_PASSWORD = "change-this-admin-password";
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);

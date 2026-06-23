@@ -571,6 +571,16 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     }
 
     const roomData = roomSnapshot.data();
+
+    if (roomData.deleted === true) {
+      setLockedUI(
+        currentLanguage === "ko"
+          ? "이 방은 삭제되었습니다."
+          : "This room has been deleted."
+      );
+      return;
+    }
+
     const actualPassword = String(roomData.password || "");
 
     if (!enteredPassword || enteredPassword !== actualPassword) {
