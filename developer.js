@@ -1,5 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import {
   getFirestore,
   collection,
   getDocs,
@@ -23,7 +28,38 @@ const firebaseConfig = {
 const DEVELOPER_PASSWORD = "change-this-admin-password";
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
+
+let authReady = false;
+
+async function ensureAnonymousAuth() {
+  if (authReady && auth.currentUser) return auth.currentUser;
+
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (user) => {
+        try {
+          if (user) {
+            authReady = true;
+            unsubscribe();
+            resolve(user);
+            return;
+          }
+          await signInAnonymously(auth);
+        } catch (error) {
+          unsubscribe();
+          reject(error);
+        }
+      },
+      (error) => {
+        unsubscribe();
+        reject(error);
+      }
+    );
+  });
+}
 
 const loginPanel = document.getElementById("loginPanel");
 const adminPanel = document.getElementById("adminPanel");
@@ -59,6 +95,7 @@ async function getUserCount(roomId) {
 
 async function loadRooms() {
   try {
+    await ensureAnonymousAuth();
     adminStatus.textContent = "방 목록을 불러오는 중입니다...";
     roomsList.innerHTML = "";
 
@@ -145,6 +182,7 @@ function renderRoomCard(room) {
     if (!confirmed) return;
 
     try {
+      await ensureAnonymousAuth();
       deleteBtn.disabled = true;
       deleteBtn.textContent = "Deleting...";
 

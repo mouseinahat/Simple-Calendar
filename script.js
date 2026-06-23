@@ -1,5 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import {
   getFirestore,
   collection,
   doc,
@@ -32,7 +37,11 @@ window.addEventListener("unhandledrejection", (event) => {
 
 assertFirebaseConfig();
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
+
+let authReady = false;
+let anonymousUserId = null;
 
 const monthLabel = document.getElementById("monthLabel");
 const calendarGrid = document.getElementById("calendarGrid");
@@ -195,8 +204,40 @@ function assertFirebaseConfig() {
 
 function firebaseHelpText() {
   return currentLanguage === "ko"
-    ? "Firebase 연결을 확인하세요: 1) Google Cloud API Key 웹사이트 제한에 https://mouseinahat.github.io/* 와 https://mouseinahat.github.io/Simple-Calendar/* 추가 2) API 제한에 Cloud Firestore API 허용 3) Firestore Rules가 개발 중 read/write 허용인지 확인"
-    : "Check Firebase: 1) Add https://mouseinahat.github.io/* and https://mouseinahat.github.io/Simple-Calendar/* to API key website restrictions 2) Allow Cloud Firestore API 3) Check Firestore Rules during development.";
+    ? "Firebase 연결을 확인하세요: 1) Google Cloud API Key 웹사이트 제한에 https://mouseinahat.github.io/* 와 https://mouseinahat.github.io/Simple-Calendar/* 추가 2) API 제한에 Cloud Firestore API와 Identity Toolkit API 허용 3) Firebase Authentication에서 Anonymous provider 활성화 4) Firestore Rules가 request.auth != null을 허용하는지 확인"
+    : "Check Firebase: 1) Add https://mouseinahat.github.io/* and https://mouseinahat.github.io/Simple-Calendar/* to API key website restrictions 2) Allow Cloud Firestore API and Identity Toolkit API 3) Enable Anonymous provider in Firebase Authentication 4) Check Firestore Rules allow request.auth != null.";
+}
+
+async function ensureAnonymousAuth() {
+  if (authReady && auth.currentUser) {
+    return auth.currentUser;
+  }
+
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (user) => {
+        try {
+          if (user) {
+            authReady = true;
+            anonymousUserId = user.uid;
+            unsubscribe();
+            resolve(user);
+            return;
+          }
+
+          await signInAnonymously(auth);
+        } catch (error) {
+          unsubscribe();
+          reject(error);
+        }
+      },
+      (error) => {
+        unsubscribe();
+        reject(error);
+      }
+    );
+  });
 }
 
 userNameInput.value = myProfile.name || "";
@@ -465,6 +506,7 @@ function saveProfileLocally() {
 
 async function saveProfileToFirestore(extraDates = null, options = {}) {
   try {
+    await ensureAnonymousAuth();
   if (!isRoomUnlocked) {
     statusMessage.textContent = "저장하기 전에 방을 먼저 열어주세요.";
     return;
@@ -502,6 +544,7 @@ async function saveProfileToFirestore(extraDates = null, options = {}) {
 
 async function createRoom() {
   try {
+    await ensureAnonymousAuth();
     const password = newRoomPasswordInput.value.trim();
     const title = newRoomTitleInput.value.trim() || "제목 없는 방";
 
@@ -546,6 +589,7 @@ async function createRoom() {
 
 async function unlockRoom(roomId, password, updateUrl = true) {
   try {
+    await ensureAnonymousAuth();
     const cleanedRoomId = sanitizeRoomId(roomId);
     const enteredPassword = String(password || "").trim();
 
@@ -967,8 +1011,23 @@ window.addEventListener("popstate", async () => {
 if (currentRoomId) {
   roomLinkInput.value = getRoomUrl(currentRoomId);
 }
-applyLanguage(currentLanguage);
-updateRoomDisplay();
-setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
-renderCalendar();
-renderBestDates();
+
+ensureAnonymousAuth()
+  .then(() => {
+    applyLanguage(currentLanguage);
+    updateRoomDisplay();
+    setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
+    renderCalendar();
+    renderBestDates();
+    statusMessage.textContent = currentRoomId
+      ? "익명 로그인이 완료되었습니다. 방 비밀번호를 입력하세요."
+      : "익명 로그인이 완료되었습니다. 새 방을 만들거나 공유받은 링크를 열어주세요.";
+  })
+  .catch((error) => {
+    showError("익명 로그인", error);
+    applyLanguage(currentLanguage);
+    updateRoomDisplay();
+    setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
+    renderCalendar();
+    renderBestDates();
+  });
