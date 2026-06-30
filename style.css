@@ -90,8 +90,75 @@ h2 { letter-spacing: -0.02em; }
 .mini-card h2 { margin-bottom: 0; font-size: 20px; }
 .form-grid { display: grid; gap: 16px; margin-bottom: 14px; }
 .form-grid.two-columns { grid-template-columns: minmax(0, 1fr) 140px; }
+.profile-create-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 120px; }
 
 .hidden { display: none !important; }
+
+.profile-access-header,
+.active-profile-row,
+.profile-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.profile-access-header h2,
+.create-profile-panel h3,
+.profile-login-panel h3,
+.active-profile-row h2 {
+  margin-bottom: 4px;
+}
+
+.profile-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-list-item {
+  width: 100%;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+}
+
+.profile-list-item:hover {
+  background: #eef2ff;
+}
+
+.profile-list-item strong {
+  flex: 1;
+  font-size: 16px;
+}
+
+.profile-list-item span:last-child {
+  color: var(--primary-dark);
+  font-weight: 900;
+}
+
+.profile-login-panel,
+.create-profile-panel {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.create-profile-panel button,
+.active-profile-row button {
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 18px;
+  background: var(--primary);
+  color: #fff;
+}
+
+.active-profile-row button.secondary {
+  background: #e2e8f0;
+  color: #334155;
+}
 
 .bulk-select-panel {
   margin-top: 4px;
@@ -315,7 +382,18 @@ button:disabled { cursor: not-allowed; opacity: 0.65; }
   .room-box, .setup-grid, .password-row { grid-template-columns: 1fr; }
   .room-box { align-items: stretch; flex-direction: column; padding: 14px; }
   .setup-grid, .form-grid.two-columns { grid-template-columns: 1fr; }
+  .profile-create-grid { grid-template-columns: 1fr; }
+  .profile-access-header,
+  .active-profile-row,
+  .profile-list-item {
+    align-items: stretch;
+  }
+  .active-profile-row {
+    flex-direction: column;
+  }
   .actions button, .room-actions button, .mini-card button, .password-row button { width: 100%; }
+  .create-profile-panel button,
+  .active-profile-row button { width: 100%; }
 
   .calendar-card { border-radius: 20px; }
   .calendar-header { min-height: 86px; grid-template-columns: 54px 1fr 54px; padding: 8px; }

@@ -9,25 +9,23 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-// Replace this object with your own Firebase Web App config.
-// If Step 5 already worked, copy the same firebaseConfig from your Step 5 script.js.
 const firebaseConfig = {
   apiKey: "AIzaSyAJyC1cQZb47o2325r9A_zsea5XfBfNCTw",
   authDomain: "simple-calendar-46931.firebaseapp.com",
   projectId: "simple-calendar-46931",
   storageBucket: "simple-calendar-46931.firebasestorage.app",
   messagingSenderId: "188294863466",
-  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813",
+  appId: "1:188294863466:web:8e1f5fa1a34fc3cf2bc813"
 };
-
 
 window.addEventListener("error", (event) => {
   const status = document.getElementById("statusMessage");
-  if (status) status.textContent = `JavaScript 오류: ${event.message}`;
+  if (status) status.textContent = `JavaScript error: ${event.message}`;
 });
+
 window.addEventListener("unhandledrejection", (event) => {
   const status = document.getElementById("statusMessage");
-  if (status) status.textContent = `Firebase/Promise 오류: ${event.reason?.message || event.reason}`;
+  if (status) status.textContent = `Firebase/Promise error: ${event.reason?.message || event.reason}`;
 });
 
 assertFirebaseConfig();
@@ -64,26 +62,39 @@ const lockedNotice = document.getElementById("lockedNotice");
 const bulkSelectPanel = document.getElementById("bulkSelectPanel");
 const langKoBtn = document.getElementById("langKoBtn");
 const langEnBtn = document.getElementById("langEnBtn");
+const profileAccessPanel = document.getElementById("profileAccessPanel");
+const profileList = document.getElementById("profileList");
+const profileLoginPanel = document.getElementById("profileLoginPanel");
+const selectedProfileName = document.getElementById("selectedProfileName");
+const profilePasswordInput = document.getElementById("profilePassword");
+const loginProfileBtn = document.getElementById("loginProfileBtn");
+const newProfileNameInput = document.getElementById("newProfileName");
+const newProfilePasswordInput = document.getElementById("newProfilePassword");
+const newProfileColorInput = document.getElementById("newProfileColor");
+const createProfileBtn = document.getElementById("createProfileBtn");
+const activeProfileName = document.getElementById("activeProfileName");
+const switchProfileBtn = document.getElementById("switchProfileBtn");
 
 const today = new Date();
 let currentYear = today.getFullYear();
 let currentMonth = today.getMonth();
 let users = [];
-let unsubscribeRoom = null;
+let unsubscribeProfiles = null;
+let unsubscribeLegacyUsers = null;
 let isRoomUnlocked = false;
 let currentRoomData = null;
+let selectedProfile = null;
+let profileLoginTarget = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 const roomFromUrl = sanitizeRoomId(urlParams.get("room")) || "";
-
-let myProfile = JSON.parse(localStorage.getItem("simpleCalendarProfile")) || {
-  id: crypto.randomUUID(),
+let currentRoomId = roomFromUrl;
+let currentLanguage = localStorage.getItem("simpleCalendarLanguage") || "ko";
+let myProfile = {
+  id: "",
   name: "",
   color: "#4f46e5"
 };
-
-let currentRoomId = roomFromUrl;
-let currentLanguage = localStorage.getItem("simpleCalendarLanguage") || "ko";
 
 const translations = {
   ko: {
@@ -102,11 +113,27 @@ const translations = {
     sharedLinkLabel: "공유받은 방 링크",
     openRoomBtn: "링크 열기",
     passwordHeading: "방 비밀번호 입력",
-    passwordHelp: "공유받은 방 링크가 확인되었습니다. 비밀번호를 입력하면 달력을 볼 수 있습니다.",
+    passwordHelp: "공유받은 방 링크가 확인되었습니다. 비밀번호를 입력하면 프로필을 선택할 수 있습니다.",
     roomPasswordLabel: "방 비밀번호",
     roomPasswordPlaceholder: "비밀번호 입력",
-    unlockRoomBtn: "달력 열기",
+    unlockRoomBtn: "방 열기",
     lockedDefault: "새 방을 만들거나 공유받은 링크를 열어주세요.",
+    profileAccessHeading: "프로필 선택",
+    profileAccessHelp: "이 방에서 사용할 프로필을 선택하거나 새로 만드세요.",
+    profileLoginHeading: "프로필 비밀번호",
+    profilePasswordLabel: "프로필 비밀번호",
+    profilePasswordPlaceholder: "프로필 비밀번호 입력",
+    loginProfileBtn: "프로필 열기",
+    createProfileHeading: "새 프로필 만들기",
+    newProfileNameLabel: "이름",
+    newProfileNamePlaceholder: "이름 입력",
+    newProfilePasswordLabel: "프로필 비밀번호",
+    newProfilePasswordPlaceholder: "프로필 비밀번호 설정",
+    newProfileColorLabel: "색상",
+    createProfileBtn: "새 프로필 만들기",
+    activeProfileEyebrow: "활성 프로필",
+    noActiveProfile: "프로필 없음",
+    switchProfileBtn: "프로필 변경",
     myNameLabel: "내 이름",
     userNamePlaceholder: "이름 입력",
     myColorLabel: "내 색상",
@@ -123,7 +150,9 @@ const translations = {
     peopleAvailable: "명 가능",
     emptyRecommendation: "이번 달에는 아직 선택된 가능 날짜가 없습니다.",
     noParticipants: "아직 이 방에 참여자가 없습니다.",
-    unnamed: "이름 없음"
+    unnamed: "이름 없음",
+    selectProfileButton: "선택",
+    noProfiles: "아직 프로필이 없습니다. 새 프로필을 만들어 시작하세요."
   },
   en: {
     heroTitle: "A shared calendar for choosing meeting dates",
@@ -141,11 +170,27 @@ const translations = {
     sharedLinkLabel: "Shared room link",
     openRoomBtn: "Open via link",
     passwordHeading: "Enter room password",
-    passwordHelp: "A shared room link was detected. Enter the password to view the calendar.",
+    passwordHelp: "A shared room link was detected. Enter the password to choose a profile.",
     roomPasswordLabel: "Room password",
     roomPasswordPlaceholder: "Enter password",
-    unlockRoomBtn: "Open calendar",
+    unlockRoomBtn: "Open room",
     lockedDefault: "Create a new room or open a shared room link.",
+    profileAccessHeading: "Choose profile",
+    profileAccessHelp: "Choose an existing room profile or create a new one.",
+    profileLoginHeading: "Profile password",
+    profilePasswordLabel: "Profile password",
+    profilePasswordPlaceholder: "Enter profile password",
+    loginProfileBtn: "Open profile",
+    createProfileHeading: "Create New Profile",
+    newProfileNameLabel: "Name",
+    newProfileNamePlaceholder: "Enter name",
+    newProfilePasswordLabel: "Profile password",
+    newProfilePasswordPlaceholder: "Set profile password",
+    newProfileColorLabel: "Color",
+    createProfileBtn: "Create New Profile",
+    activeProfileEyebrow: "Active profile",
+    noActiveProfile: "No profile",
+    switchProfileBtn: "Switch profile",
     myNameLabel: "My name",
     userNamePlaceholder: "Enter name",
     myColorLabel: "My color",
@@ -162,14 +207,20 @@ const translations = {
     peopleAvailable: "available",
     emptyRecommendation: "No available dates have been selected for this month yet.",
     noParticipants: "No participants in this room yet.",
-    unnamed: "Unnamed"
+    unnamed: "Unnamed",
+    selectProfileButton: "Select",
+    noProfiles: "No profiles yet. Create a profile to start."
   }
 };
+
+function t(key) {
+  return translations[currentLanguage]?.[key] ?? translations.ko[key] ?? key;
+}
 
 function showError(action, error) {
   console.error(action, error);
   const message = error?.message || String(error || "Unknown error");
-  statusMessage.textContent = `${action} 실패: ${message} ${firebaseHelpText ? " | " + firebaseHelpText() : ""}`;
+  statusMessage.textContent = `${action} failed: ${message} | ${firebaseHelpText()}`;
 }
 
 function withTimeout(promise, label, milliseconds = 12000) {
@@ -177,7 +228,7 @@ function withTimeout(promise, label, milliseconds = 12000) {
     promise,
     new Promise((_, reject) => {
       setTimeout(() => {
-        reject(new Error(`${label} 요청 시간이 초과되었습니다. Firebase API 제한, Firestore Rules, 네트워크, 또는 Firebase 설정값을 확인해주세요.`));
+        reject(new Error(`${label} timed out. Check Firebase API restrictions, Firestore rules, network access, or Firebase config.`));
       }, milliseconds);
     })
   ]);
@@ -189,21 +240,14 @@ function assertFirebaseConfig() {
     .map(([key]) => key);
 
   if (missing.length > 0) {
-    throw new Error(`Firebase 설정값이 아직 비어 있습니다: ${missing.join(", ")}`);
+    throw new Error(`Firebase config is missing: ${missing.join(", ")}`);
   }
 }
 
 function firebaseHelpText() {
   return currentLanguage === "ko"
-    ? "Firebase 연결을 확인하세요: 1) Google Cloud API Key 웹사이트 제한에 https://mouseinahat.github.io/* 와 https://mouseinahat.github.io/Simple-Calendar/* 추가 2) API 제한에 Cloud Firestore API 허용 3) Firestore Rules가 개발 중 read/write 허용인지 확인"
-    : "Check Firebase: 1) Add https://mouseinahat.github.io/* and https://mouseinahat.github.io/Simple-Calendar/* to API key website restrictions 2) Allow Cloud Firestore API 3) Check Firestore Rules during development.";
-}
-
-userNameInput.value = myProfile.name || "";
-userColorInput.value = myProfile.color || "#4f46e5";
-
-function t(key) {
-  return translations[currentLanguage]?.[key] ?? translations.ko[key] ?? key;
+    ? "Firebase 연결을 확인하세요: API 키 웹사이트 제한, Cloud Firestore API, Firestore Rules를 확인하세요."
+    : "Check Firebase API key website restrictions, Cloud Firestore API, and Firestore Rules.";
 }
 
 function setText(id, value) {
@@ -228,14 +272,21 @@ function applyLanguage(language) {
     "heroTitle", "heroSubtitle", "currentRoomEyebrow", "copyRoomLinkBtn",
     "createRoomHeading", "roomTitleLabel", "newRoomPasswordLabel", "createRoomBtn",
     "openLinkHeading", "sharedLinkLabel", "openRoomBtn", "passwordHeading",
-    "passwordHelp", "roomPasswordLabel", "unlockRoomBtn", "myNameLabel",
-    "myColorLabel", "saveProfileBtn", "clearMyDatesBtn", "bulkTitle", "bulkHelp",
+    "passwordHelp", "roomPasswordLabel", "unlockRoomBtn", "profileAccessHeading",
+    "profileAccessHelp", "profileLoginHeading", "profilePasswordLabel",
+    "loginProfileBtn", "createProfileHeading", "newProfileNameLabel",
+    "newProfilePasswordLabel", "newProfileColorLabel", "createProfileBtn",
+    "activeProfileEyebrow", "switchProfileBtn", "myNameLabel", "myColorLabel",
+    "saveProfileBtn", "clearMyDatesBtn", "bulkTitle", "bulkHelp",
     "recommendationHeading", "recommendationHelp", "legendHeading"
   ].forEach((id) => setText(id, t(id)));
 
   setPlaceholder("newRoomTitle", t("newRoomTitlePlaceholder"));
   setPlaceholder("newRoomPassword", t("newRoomPasswordPlaceholder"));
   setPlaceholder("roomPassword", t("roomPasswordPlaceholder"));
+  setPlaceholder("profilePassword", t("profilePasswordPlaceholder"));
+  setPlaceholder("newProfileName", t("newProfileNamePlaceholder"));
+  setPlaceholder("newProfilePassword", t("newProfilePasswordPlaceholder"));
   setPlaceholder("userName", t("userNamePlaceholder"));
 
   const weekdayButtonIds = ["weekdaySun", "weekdayMon", "weekdayTue", "weekdayWed", "weekdayThu", "weekdayFri", "weekdaySat"];
@@ -247,9 +298,11 @@ function applyLanguage(language) {
   setText("selectAllBtn", t("selectAllBtn"));
 
   updateRoomDisplay();
+  updateActiveProfileDisplay();
+  renderProfileList();
   renderCalendar();
   renderBestDates();
-updateQuickSelectButtonStates();
+  updateQuickSelectButtonStates();
   renderLegend();
 }
 
@@ -268,9 +321,7 @@ function sanitizeRoomId(value) {
     .slice(0, 80);
 }
 
-function createRandomRoomId(title = "") {
-  // Room IDs are independent from the room title, so duplicate titles never collide.
-  // crypto.randomUUID() creates a practically unguessable ID for shared links.
+function createRandomRoomId() {
   return crypto.randomUUID();
 }
 
@@ -282,7 +333,6 @@ function extractRoomIdFromLink(value) {
     const parsedUrl = new URL(raw);
     return sanitizeRoomId(parsedUrl.searchParams.get("room"));
   } catch {
-    // If a user pastes only the UUID by mistake, still support it.
     return sanitizeRoomId(raw);
   }
 }
@@ -291,9 +341,28 @@ function getDateKey(year, monthIndex, day) {
   return `${year}-${pad(monthIndex + 1)}-${pad(day)}`;
 }
 
-function getCurrentUserDates() {
+async function hashPassword(password) {
+  const encoded = new TextEncoder().encode(password);
+  const digest = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function normalizeProfile(documentSnapshot) {
+  const data = documentSnapshot.data();
+  return {
+    id: data.id || documentSnapshot.id,
+    name: data.name || t("unnamed"),
+    color: data.color || "#64748b",
+    passwordHash: data.passwordHash || "",
+    availability: Array.isArray(data.availability) ? data.availability : (data.dates || [])
+  };
+}
+
+function getCurrentProfileDates() {
   const currentUser = users.find((user) => user.id === myProfile.id);
-  return new Set(currentUser?.dates || []);
+  return new Set(currentUser?.availability || currentUser?.dates || []);
 }
 
 function getDatesInCurrentMonthByWeekday(weekday) {
@@ -310,83 +379,19 @@ function getDatesInCurrentMonthByWeekday(weekday) {
   return dates;
 }
 
-async function addBulkDatesToMyCalendar(datesToAdd, label) {
-  try {
-    if (!isRoomUnlocked) {
-      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 방을 먼저 열어주세요." : "Open a room before using quick select.";
-      return;
-    }
-
-    saveProfileLocally();
-
-    if (!myProfile.name) {
-      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 이름을 입력해주세요." : "Enter your name before using quick select.";
-      userNameInput.focus();
-      return;
-    }
-
-    if (!datesToAdd.length) {
-      statusMessage.textContent = currentLanguage === "ko" ? "현재 월에 선택할 날짜가 없습니다." : "There are no dates to select in the current month.";
-      return;
-    }
-
-    const dates = getCurrentUserDates();
-    datesToAdd.forEach((dateKey) => dates.add(dateKey));
-    const sortedDates = Array.from(dates).sort();
-
-    // Optimistic UI update: reflect the quick-select result immediately,
-    // even before Firestore's real-time listener returns.
-    const existingIndex = users.findIndex((user) => user.id === myProfile.id);
-    const nextUser = {
-      id: myProfile.id,
-      name: myProfile.name,
-      color: myProfile.color,
-      dates: sortedDates
-    };
-    if (existingIndex >= 0) {
-      users[existingIndex] = { ...users[existingIndex], ...nextUser };
-    } else {
-      users.push(nextUser);
-    }
-    renderCalendar();
-    renderLegend();
-    renderBestDates();
-    updateQuickSelectButtonStates();
-
-    await saveProfileToFirestore(sortedDates, { silent: true });
-    statusMessage.textContent = currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`;
-  } catch (error) {
-    showError(currentLanguage === "ko" ? "빠른 선택" : "Quick select", error);
-  }
-}
-
-function updateQuickSelectButtonStates() {
-  if (!bulkSelectPanel) return;
-  const selectedDates = getCurrentUserDates();
-  const buttons = bulkSelectPanel.querySelectorAll("button[data-weekday], button[data-select-all]");
-
-  buttons.forEach((button) => {
-    let dates = [];
-    if (button.dataset.selectAll === "true") {
-      dates = getDatesInCurrentMonthByWeekday(null);
-    } else if (button.dataset.weekday !== undefined) {
-      dates = getDatesInCurrentMonthByWeekday(Number(button.dataset.weekday));
-    }
-
-    const allSelected = dates.length > 0 && dates.every((dateKey) => selectedDates.has(dateKey));
-    button.classList.toggle("quick-selected", allSelected);
-  });
-}
-
 function getRoomDocRef(roomId = currentRoomId) {
   return doc(db, "rooms", roomId);
 }
 
-function getUserDocRef() {
-  return doc(db, "rooms", currentRoomId, "users", myProfile.id);
+function getProfileDocRef(profileId = myProfile.id) {
+  return doc(db, "rooms", currentRoomId, "profiles", profileId);
 }
 
-function getUsersCollectionRef() {
+function getProfilesCollectionRef() {
+  return collection(db, "rooms", currentRoomId, "profiles");
+}
+
+function getLegacyUsersCollectionRef() {
   return collection(db, "rooms", currentRoomId, "users");
 }
 
@@ -403,22 +408,39 @@ function updateRoomDisplay() {
     return;
   }
 
-  const title = currentRoomData?.title ? ` — ${currentRoomData.title}` : "";
+  const title = currentRoomData?.title ? ` - ${currentRoomData.title}` : "";
   currentRoomLabel.textContent = `${currentRoomId}${title}`;
   roomLink.textContent = getRoomUrl(currentRoomId);
 }
 
-function setLockedUI(message = "달력을 보고 수정하려면 올바른 방 비밀번호를 입력하세요.") {
+function updateActiveProfileDisplay() {
+  activeProfileName.textContent = myProfile.name || t("noActiveProfile");
+  userNameInput.value = myProfile.name || "";
+  userColorInput.value = myProfile.color || "#4f46e5";
+}
+
+function stopRoomListeners() {
+  if (unsubscribeProfiles) unsubscribeProfiles();
+  if (unsubscribeLegacyUsers) unsubscribeLegacyUsers();
+  unsubscribeProfiles = null;
+  unsubscribeLegacyUsers = null;
+}
+
+function setLockedUI(message = "Open a room before editing the calendar.") {
   isRoomUnlocked = false;
   users = [];
   currentRoomData = null;
-  if (unsubscribeRoom) unsubscribeRoom();
-  unsubscribeRoom = null;
+  selectedProfile = null;
+  profileLoginTarget = null;
+  myProfile = { id: "", name: "", color: "#4f46e5" };
+  stopRoomListeners();
 
   calendarSection.classList.add("hidden");
   legendSection.classList.add("hidden");
   recommendationSection.classList.add("hidden");
   userControls.classList.add("hidden");
+  profileAccessPanel.classList.add("hidden");
+  profileLoginPanel.classList.add("hidden");
   if (currentRoomId) {
     passwordPanel.classList.remove("hidden");
   } else {
@@ -427,101 +449,317 @@ function setLockedUI(message = "달력을 보고 수정하려면 올바른 방 �
   lockedNotice.classList.remove("hidden");
   lockedNotice.textContent = message;
   statusMessage.textContent = message;
+  updateActiveProfileDisplay();
   renderCalendar();
   renderLegend();
 }
 
-function setUnlockedUI() {
+function setRoomUnlockedUI() {
   isRoomUnlocked = true;
+  calendarSection.classList.add("hidden");
+  legendSection.classList.remove("hidden");
+  recommendationSection.classList.add("hidden");
+  userControls.classList.add("hidden");
+  profileAccessPanel.classList.remove("hidden");
+  passwordPanel.classList.add("hidden");
+  lockedNotice.classList.add("hidden");
+}
+
+function setProfileUnlockedUI() {
   calendarSection.classList.remove("hidden");
   legendSection.classList.remove("hidden");
   recommendationSection.classList.remove("hidden");
   userControls.classList.remove("hidden");
-  passwordPanel.classList.add("hidden");
-  lockedNotice.classList.add("hidden");
+  profileAccessPanel.classList.add("hidden");
+  profileLoginPanel.classList.add("hidden");
+  updateActiveProfileDisplay();
+  renderCalendar();
+  renderLegend();
+  renderBestDates();
+  updateQuickSelectButtonStates();
+}
+
+function renderProfileList() {
+  profileList.innerHTML = "";
+
+  if (!isRoomUnlocked) return;
+
+  if (users.length === 0) {
+    profileList.innerHTML = `<p class="status">${t("noProfiles")}</p>`;
+    return;
+  }
+
+  users.forEach((profile) => {
+    const item = document.createElement("button");
+    item.className = "profile-list-item";
+    item.type = "button";
+    item.dataset.profileId = profile.id;
+
+    const dot = document.createElement("span");
+    dot.className = "legend-dot";
+    dot.style.backgroundColor = profile.color;
+
+    const name = document.createElement("strong");
+    name.textContent = profile.name || t("unnamed");
+
+    const action = document.createElement("span");
+    action.textContent = t("selectProfileButton");
+
+    item.appendChild(dot);
+    item.appendChild(name);
+    item.appendChild(action);
+    profileList.appendChild(item);
+  });
+}
+
+function chooseProfileForLogin(profileId) {
+  const profile = users.find((user) => user.id === profileId);
+  if (!profile) return;
+
+  profileLoginTarget = profile;
+  selectedProfileName.textContent = profile.name || t("unnamed");
+  profilePasswordInput.value = "";
+  profileLoginPanel.classList.remove("hidden");
+  profilePasswordInput.focus();
+}
+
+async function loginSelectedProfile() {
+  try {
+    if (!profileLoginTarget) return;
+    const password = profilePasswordInput.value.trim();
+    if (!password) {
+      statusMessage.textContent = currentLanguage === "ko" ? "프로필 비밀번호를 입력해주세요." : "Enter the profile password.";
+      profilePasswordInput.focus();
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+    if (passwordHash !== profileLoginTarget.passwordHash) {
+      statusMessage.textContent = currentLanguage === "ko" ? "프로필 비밀번호가 틀렸습니다." : "Profile password is incorrect.";
+      profilePasswordInput.focus();
+      return;
+    }
+
+    myProfile = {
+      id: profileLoginTarget.id,
+      name: profileLoginTarget.name,
+      color: profileLoginTarget.color
+    };
+    selectedProfile = profileLoginTarget;
+    localStorage.setItem(getRoomProfileStorageKey(), myProfile.id);
+    setProfileUnlockedUI();
+    statusMessage.textContent = currentLanguage === "ko" ? `${myProfile.name} 프로필로 열렸습니다.` : `Opened as ${myProfile.name}.`;
+  } catch (error) {
+    showError(currentLanguage === "ko" ? "프로필 열기" : "Open profile", error);
+  }
+}
+
+async function createProfile() {
+  try {
+    if (!isRoomUnlocked) {
+      statusMessage.textContent = currentLanguage === "ko" ? "프로필을 만들기 전에 방을 먼저 열어주세요." : "Open a room before creating a profile.";
+      return;
+    }
+
+    const name = newProfileNameInput.value.trim();
+    const password = newProfilePasswordInput.value.trim();
+    const color = newProfileColorInput.value || "#4f46e5";
+
+    if (!name) {
+      statusMessage.textContent = currentLanguage === "ko" ? "프로필 이름을 입력해주세요." : "Enter a profile name.";
+      newProfileNameInput.focus();
+      return;
+    }
+
+    if (!password) {
+      statusMessage.textContent = currentLanguage === "ko" ? "프로필 비밀번호를 설정해주세요." : "Set a profile password.";
+      newProfilePasswordInput.focus();
+      return;
+    }
+
+    createProfileBtn.disabled = true;
+    const profileId = crypto.randomUUID();
+    const passwordHash = await hashPassword(password);
+    const profile = {
+      id: profileId,
+      name,
+      color,
+      passwordHash,
+      availability: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await withTimeout(setDoc(getProfileDocRef(profileId), profile), "Create profile");
+    myProfile = { id: profileId, name, color };
+    selectedProfile = { id: profileId, name, color, passwordHash, availability: [] };
+    localStorage.setItem(getRoomProfileStorageKey(), profileId);
+    newProfileNameInput.value = "";
+    newProfilePasswordInput.value = "";
+    setProfileUnlockedUI();
+    statusMessage.textContent = currentLanguage === "ko" ? "새 프로필이 만들어졌습니다." : "New profile created.";
+  } catch (error) {
+    showError(currentLanguage === "ko" ? "프로필 만들기" : "Create profile", error);
+  } finally {
+    createProfileBtn.disabled = false;
+  }
+}
+
+function getRoomProfileStorageKey() {
+  return `simpleCalendarProfile:${currentRoomId}`;
 }
 
 function saveProfileLocally() {
   myProfile.name = userNameInput.value.trim();
   myProfile.color = userColorInput.value;
-  localStorage.setItem("simpleCalendarProfile", JSON.stringify(myProfile));
+}
+
+function applyProfileOptimistically(availability) {
+  const existingIndex = users.findIndex((user) => user.id === myProfile.id);
+  const nextProfile = {
+    id: myProfile.id,
+    name: myProfile.name,
+    color: myProfile.color,
+    passwordHash: selectedProfile?.passwordHash || "",
+    availability
+  };
+
+  if (existingIndex >= 0) {
+    users[existingIndex] = { ...users[existingIndex], ...nextProfile };
+  } else {
+    users.push(nextProfile);
+  }
 }
 
 async function saveProfileToFirestore(extraDates = null, options = {}) {
   try {
-  if (!isRoomUnlocked) {
-    statusMessage.textContent = "저장하기 전에 방을 먼저 열어주세요.";
-    return;
-  }
+    if (!isRoomUnlocked || !myProfile.id) {
+      statusMessage.textContent = currentLanguage === "ko" ? "저장하기 전에 프로필을 먼저 열어주세요." : "Open a profile before saving.";
+      return;
+    }
 
-  saveProfileLocally();
+    saveProfileLocally();
 
-  if (!myProfile.name) {
-    statusMessage.textContent = "이름을 먼저 입력해주세요.";
-    return;
-  }
+    if (!myProfile.name) {
+      statusMessage.textContent = currentLanguage === "ko" ? "이름을 먼저 입력해주세요." : "Enter your name first.";
+      return;
+    }
 
-  const currentUser = users.find((user) => user.id === myProfile.id);
-  const existingDates = currentUser?.dates || [];
+    const currentUser = users.find((user) => user.id === myProfile.id);
+    const existingDates = currentUser?.availability || currentUser?.dates || [];
+    const availability = extraDates || existingDates;
 
-  await setDoc(
-    getUserDocRef(),
-    {
-      id: myProfile.id,
-      name: myProfile.name,
-      color: myProfile.color,
-      dates: extraDates || existingDates,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
+    applyProfileOptimistically(availability);
+    updateActiveProfileDisplay();
+    renderCalendar();
+    renderLegend();
+    renderBestDates();
+    updateQuickSelectButtonStates();
 
-  if (!options.silent) {
-    statusMessage.textContent = currentLanguage === "ko" ? "저장되었습니다." : "Saved.";
-  }
+    await setDoc(
+      getProfileDocRef(),
+      {
+        id: myProfile.id,
+        name: myProfile.name,
+        color: myProfile.color,
+        availability,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    if (!options.silent) {
+      statusMessage.textContent = currentLanguage === "ko" ? "저장되었습니다." : "Saved.";
+    }
   } catch (error) {
-    showError("프로필 저장", error);
+    showError(currentLanguage === "ko" ? "프로필 저장" : "Save profile", error);
   }
+}
+
+async function addBulkDatesToMyCalendar(datesToAdd, label) {
+  try {
+    if (!myProfile.id) {
+      statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 프로필을 먼저 열어주세요." : "Open a profile before using quick select.";
+      return;
+    }
+
+    if (!datesToAdd.length) {
+      statusMessage.textContent = currentLanguage === "ko" ? "현재 월에 선택할 날짜가 없습니다." : "There are no dates to select in the current month.";
+      return;
+    }
+
+    const dates = getCurrentProfileDates();
+    datesToAdd.forEach((dateKey) => dates.add(dateKey));
+    const sortedDates = Array.from(dates).sort();
+
+    applyProfileOptimistically(sortedDates);
+    renderCalendar();
+    renderLegend();
+    renderBestDates();
+    updateQuickSelectButtonStates();
+
+    await saveProfileToFirestore(sortedDates, { silent: true });
+    statusMessage.textContent = currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`;
+  } catch (error) {
+    showError(currentLanguage === "ko" ? "빠른 선택" : "Quick select", error);
+  }
+}
+
+function updateQuickSelectButtonStates() {
+  if (!bulkSelectPanel) return;
+  const selectedDates = getCurrentProfileDates();
+  const buttons = bulkSelectPanel.querySelectorAll("button[data-weekday], button[data-select-all]");
+
+  buttons.forEach((button) => {
+    let dates = [];
+    if (button.dataset.selectAll === "true") {
+      dates = getDatesInCurrentMonthByWeekday(null);
+    } else if (button.dataset.weekday !== undefined) {
+      dates = getDatesInCurrentMonthByWeekday(Number(button.dataset.weekday));
+    }
+
+    const allSelected = dates.length > 0 && dates.every((dateKey) => selectedDates.has(dateKey));
+    button.classList.toggle("quick-selected", allSelected);
+  });
 }
 
 async function createRoom() {
   try {
     const password = newRoomPasswordInput.value.trim();
-    const title = newRoomTitleInput.value.trim() || "제목 없는 방";
+    const title = newRoomTitleInput.value.trim() || (currentLanguage === "ko" ? "제목 없는 방" : "Untitled room");
 
     if (!password) {
-      statusMessage.textContent = "방 비밀번호를 설정해주세요.";
+      statusMessage.textContent = currentLanguage === "ko" ? "방 비밀번호를 설정해주세요." : "Set a room password.";
       newRoomPasswordInput.focus();
       return;
     }
 
     createRoomBtn.disabled = true;
     createRoomBtn.textContent = currentLanguage === "ko" ? "생성 중..." : "Creating...";
-    statusMessage.textContent = "방을 생성하는 중입니다...";
+    statusMessage.textContent = currentLanguage === "ko" ? "방을 생성하는 중입니다..." : "Creating room...";
 
-    const newRoomId = createRandomRoomId(title);
+    const newRoomId = createRandomRoomId();
     currentRoomId = newRoomId;
-    currentRoomData = {
-      id: newRoomId,
-      title,
-      password
-    };
+    currentRoomData = { id: newRoomId, title, password };
 
     await withTimeout(setDoc(getRoomDocRef(newRoomId), {
       id: newRoomId,
       title,
       password,
+      deleted: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    }), "방 생성");
+    }), "Create room");
 
     roomPasswordInput.value = password;
     newRoomPasswordInput.value = "";
     newRoomTitleInput.value = "";
     await unlockRoom(newRoomId, password, true);
-    statusMessage.textContent = "비밀번호가 있는 새 방이 만들어졌습니다. 방 링크와 비밀번호를 공유하세요.";
+    statusMessage.textContent = currentLanguage === "ko"
+      ? "새 방이 만들어졌습니다. 이제 이 방에서 사용할 프로필을 만드세요."
+      : "Room created. Create a profile for this room.";
   } catch (error) {
-    showError("방 만들기", error);
+    showError(currentLanguage === "ko" ? "방 만들기" : "Create room", error);
   } finally {
     createRoomBtn.disabled = false;
     createRoomBtn.textContent = t("createRoomBtn");
@@ -534,7 +772,7 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     const enteredPassword = String(password || "").trim();
 
     if (!cleanedRoomId) {
-      statusMessage.textContent = "올바른 방 링크를 먼저 열어주세요.";
+      statusMessage.textContent = currentLanguage === "ko" ? "올바른 방 링크를 먼저 열어주세요." : "Open a valid room link first.";
       return;
     }
 
@@ -542,54 +780,101 @@ async function unlockRoom(roomId, password, updateUrl = true) {
     updateRoomDisplay();
 
     if (updateUrl) {
-      const newUrl = getRoomUrl(currentRoomId);
-      window.history.pushState({}, "", newUrl);
+      window.history.pushState({}, "", getRoomUrl(currentRoomId));
     }
 
-    statusMessage.textContent = "방 비밀번호를 확인하는 중입니다...";
-    const roomSnapshot = await withTimeout(getDoc(getRoomDocRef()), "방 비밀번호 확인");
+    statusMessage.textContent = currentLanguage === "ko" ? "방 비밀번호를 확인하는 중입니다..." : "Checking room password...";
+    const roomSnapshot = await withTimeout(getDoc(getRoomDocRef()), "Check room password");
 
     if (!roomSnapshot.exists()) {
-      setLockedUI("방을 찾을 수 없습니다. 새 방을 만들거나 링크를 확인해주세요.");
+      setLockedUI(currentLanguage === "ko" ? "방을 찾을 수 없습니다. 새 방을 만들거나 링크를 확인해주세요." : "Room not found. Create a room or check the link.");
       return;
     }
 
     const roomData = roomSnapshot.data();
-    const actualPassword = String(roomData.password || "");
+    if (roomData.deleted === true) {
+      setLockedUI(currentLanguage === "ko" ? "이 방은 삭제되었습니다." : "This room has been deleted.");
+      return;
+    }
 
+    const actualPassword = String(roomData.password || "");
     if (!enteredPassword || enteredPassword !== actualPassword) {
-      setLockedUI("비밀번호가 틀렸거나 입력되지 않았습니다. 다시 시도해주세요.");
+      setLockedUI(currentLanguage === "ko" ? "비밀번호가 틀렸거나 입력되지 않았습니다. 다시 시도해주세요." : "Password is missing or incorrect. Try again.");
       roomPasswordInput.focus();
       return;
     }
 
     currentRoomData = roomData;
-    setUnlockedUI();
+    setRoomUnlockedUI();
     updateRoomDisplay();
-
-    if (unsubscribeRoom) unsubscribeRoom();
-    unsubscribeRoom = onSnapshot(getUsersCollectionRef(), (snapshot) => {
-      users = snapshot.docs.map((document) => document.data());
-      renderCalendar();
-      renderLegend();
-      renderBestDates();
-      updateQuickSelectButtonStates();
-    }, (error) => {
-      showError("실시간 동기화", error);
-    });
-
-    statusMessage.textContent = `열린 방: ${currentRoomId}`;
+    startRoomProfileListeners();
+    statusMessage.textContent = currentLanguage === "ko" ? "방이 열렸습니다. 프로필을 선택하거나 만드세요." : "Room opened. Choose or create a profile.";
   } catch (error) {
-    showError("방 열기", error);
+    showError(currentLanguage === "ko" ? "방 열기" : "Open room", error);
   }
 }
 
+function startRoomProfileListeners() {
+  stopRoomListeners();
+  users = [];
+
+  unsubscribeProfiles = onSnapshot(getProfilesCollectionRef(), (snapshot) => {
+    const profiles = snapshot.docs.map(normalizeProfile);
+    const legacyOnly = users.filter((user) => user.legacyOnly && !profiles.some((profile) => profile.id === user.id));
+    users = [...profiles, ...legacyOnly].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    syncSelectedProfileFromUsers();
+    renderProfileList();
+    renderCalendar();
+    renderLegend();
+    renderBestDates();
+    updateQuickSelectButtonStates();
+  }, (error) => {
+    showError(currentLanguage === "ko" ? "프로필 동기화" : "Profile sync", error);
+  });
+
+  unsubscribeLegacyUsers = onSnapshot(getLegacyUsersCollectionRef(), (snapshot) => {
+    const existingProfileIds = new Set(users.filter((user) => !user.legacyOnly).map((user) => user.id));
+    const legacyProfiles = snapshot.docs
+      .map((documentSnapshot) => {
+        const data = documentSnapshot.data();
+        return {
+          id: data.id || documentSnapshot.id,
+          name: data.name || t("unnamed"),
+          color: data.color || "#64748b",
+          passwordHash: "",
+          availability: data.dates || [],
+          legacyOnly: true
+        };
+      })
+      .filter((profile) => !existingProfileIds.has(profile.id));
+
+    const normalProfiles = users.filter((user) => !user.legacyOnly);
+    users = [...normalProfiles, ...legacyProfiles].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    renderProfileList();
+    renderCalendar();
+    renderLegend();
+    renderBestDates();
+    updateQuickSelectButtonStates();
+  }, () => {
+    // Older rooms without the legacy users collection can safely ignore this listener.
+  });
+}
+
+function syncSelectedProfileFromUsers() {
+  if (!myProfile.id) return;
+  const latest = users.find((user) => user.id === myProfile.id);
+  if (!latest) return;
+  selectedProfile = latest;
+  myProfile.name = latest.name;
+  myProfile.color = latest.color;
+  updateActiveProfileDisplay();
+}
 
 function getAvailabilityByDate() {
   const availability = {};
 
   users.forEach((user) => {
-    (user.dates || []).forEach((date) => {
+    (user.availability || user.dates || []).forEach((date) => {
       if (!availability[date]) {
         availability[date] = [];
       }
@@ -615,9 +900,7 @@ function formatDateLabel(dateKey) {
 function renderBestDates() {
   bestDatesList.innerHTML = "";
 
-  if (!isRoomUnlocked) {
-    return;
-  }
+  if (!isRoomUnlocked) return;
 
   const availability = getAvailabilityByDate();
   const rankedDates = Object.entries(availability)
@@ -627,9 +910,7 @@ function renderBestDates() {
     })
     .map(([dateKey, people]) => ({ dateKey, people }))
     .sort((a, b) => {
-      if (b.people.length !== a.people.length) {
-        return b.people.length - a.people.length;
-      }
+      if (b.people.length !== a.people.length) return b.people.length - a.people.length;
       return a.dateKey.localeCompare(b.dateKey);
     })
     .slice(0, 10);
@@ -719,14 +1000,12 @@ function renderCalendar() {
   const dateCounts = Object.fromEntries(
     Object.entries(availability).map(([date, people]) => [date, people.length])
   );
-
   const currentMonthCounts = Object.entries(dateCounts)
     .filter(([dateKey]) => {
       const [year, month] = dateKey.split("-").map(Number);
       return year === currentYear && month === currentMonth + 1;
     })
     .map(([, count]) => count);
-
   const maxCount = Math.max(0, ...currentMonthCounts);
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -735,16 +1014,9 @@ function renderCalendar() {
     dayCell.className = "calendar-day";
     dayCell.type = "button";
 
-const weekday = new Date(currentYear, currentMonth, day).getDay();
-
-if (weekday === 0) {
-  dayCell.classList.add("sunday");
-}
-
-if (weekday === 6) {
-  dayCell.classList.add("saturday");
-}
-
+    const weekday = new Date(currentYear, currentMonth, day).getDay();
+    if (weekday === 0) dayCell.classList.add("sunday");
+    if (weekday === 6) dayCell.classList.add("saturday");
 
     const dayNumber = document.createElement("div");
     dayNumber.className = "day-number";
@@ -767,7 +1039,7 @@ if (weekday === 6) {
     dotContainer.className = "color-dots";
 
     users.forEach((user) => {
-      if ((user.dates || []).includes(dateKey)) {
+      if ((user.availability || user.dates || []).includes(dateKey)) {
         const dot = document.createElement("span");
         dot.className = "color-dot";
         dot.title = user.name;
@@ -784,22 +1056,12 @@ if (weekday === 6) {
     dayCell.appendChild(dotContainer);
 
     dayCell.addEventListener("click", async () => {
-      if (!isRoomUnlocked) {
-        statusMessage.textContent = "날짜를 선택하기 전에 방을 먼저 열어주세요.";
+      if (!myProfile.id) {
+        statusMessage.textContent = currentLanguage === "ko" ? "날짜를 선택하기 전에 프로필을 먼저 열어주세요." : "Open a profile before selecting dates.";
         return;
       }
 
-      saveProfileLocally();
-
-      if (!myProfile.name) {
-        statusMessage.textContent = "날짜를 선택하기 전에 이름을 입력해주세요.";
-        userNameInput.focus();
-        return;
-      }
-
-      const currentUser = users.find((user) => user.id === myProfile.id);
-      const dates = new Set(currentUser?.dates || []);
-
+      const dates = getCurrentProfileDates();
       if (dates.has(dateKey)) {
         dates.delete(dateKey);
       } else {
@@ -807,7 +1069,6 @@ if (weekday === 6) {
       }
 
       await saveProfileToFirestore(Array.from(dates).sort());
-      updateQuickSelectButtonStates();
     });
 
     calendarGrid.appendChild(dayCell);
@@ -816,22 +1077,21 @@ if (weekday === 6) {
 
 langKoBtn?.addEventListener("click", () => applyLanguage("ko"));
 langEnBtn?.addEventListener("click", () => applyLanguage("en"));
-
 createRoomBtn.addEventListener("click", createRoom);
 
 copyRoomLinkBtn.addEventListener("click", async () => {
   if (!currentRoomId) {
-    statusMessage.textContent = "복사할 방 링크가 없습니다. 먼저 방을 만들거나 링크를 열어주세요.";
+    statusMessage.textContent = currentLanguage === "ko" ? "복사할 방 링크가 없습니다." : "No room link to copy.";
     return;
   }
 
   const link = getRoomUrl(currentRoomId);
   try {
     await navigator.clipboard.writeText(link);
-    statusMessage.textContent = "방 링크가 복사되었습니다. 비밀번호는 따로 공유하세요.";
-  } catch (error) {
+    statusMessage.textContent = currentLanguage === "ko" ? "방 링크가 복사되었습니다. 비밀번호는 따로 공유하세요." : "Room link copied. Share the password separately.";
+  } catch {
     roomLink.textContent = link;
-    statusMessage.textContent = "자동 복사에 실패했습니다. 위에 표시된 방 링크를 직접 복사해주세요.";
+    statusMessage.textContent = currentLanguage === "ko" ? "자동 복사에 실패했습니다. 위 링크를 직접 복사해주세요." : "Auto-copy failed. Copy the displayed link manually.";
   }
 });
 
@@ -839,7 +1099,7 @@ openRoomBtn.addEventListener("click", () => {
   const pastedRoomId = extractRoomIdFromLink(roomLinkInput.value);
 
   if (!pastedRoomId) {
-    statusMessage.textContent = "올바른 공유 방 링크를 먼저 붙여넣어주세요.";
+    statusMessage.textContent = currentLanguage === "ko" ? "올바른 공유 방 링크를 먼저 붙여넣어주세요." : "Paste a valid shared room link first.";
     roomLinkInput.focus();
     return;
   }
@@ -849,7 +1109,7 @@ openRoomBtn.addEventListener("click", () => {
   users = [];
   updateRoomDisplay();
   window.history.pushState({}, "", getRoomUrl(currentRoomId));
-  setLockedUI("방 링크가 열렸습니다. 계속하려면 방 비밀번호를 입력하세요.");
+  setLockedUI(currentLanguage === "ko" ? "방 링크가 열렸습니다. 계속하려면 방 비밀번호를 입력하세요." : "Room link opened. Enter the room password to continue.");
   roomPasswordInput.value = "";
   roomPasswordInput.focus();
 });
@@ -858,10 +1118,43 @@ unlockRoomBtn.addEventListener("click", async () => {
   await unlockRoom(currentRoomId, roomPasswordInput.value, true);
 });
 
+profileList.addEventListener("click", (event) => {
+  const item = event.target.closest(".profile-list-item");
+  if (!item) return;
+  const profile = users.find((user) => user.id === item.dataset.profileId);
+  if (profile?.legacyOnly) {
+    myProfile = { id: profile.id, name: profile.name, color: profile.color };
+    selectedProfile = profile;
+    setProfileUnlockedUI();
+    statusMessage.textContent = currentLanguage === "ko"
+      ? "이전 방식의 프로필을 열었습니다. 저장하면 새 프로필 구조로 이동됩니다."
+      : "Opened a legacy profile. Saving will move it to the new profile structure.";
+    return;
+  }
+  chooseProfileForLogin(item.dataset.profileId);
+});
+
+loginProfileBtn.addEventListener("click", loginSelectedProfile);
+profilePasswordInput.addEventListener("keydown", async (event) => {
+  if (event.key === "Enter") await loginSelectedProfile();
+});
+createProfileBtn.addEventListener("click", createProfile);
+
+switchProfileBtn.addEventListener("click", () => {
+  myProfile = { id: "", name: "", color: "#4f46e5" };
+  selectedProfile = null;
+  userControls.classList.add("hidden");
+  calendarSection.classList.add("hidden");
+  recommendationSection.classList.add("hidden");
+  profileAccessPanel.classList.remove("hidden");
+  renderProfileList();
+  updateActiveProfileDisplay();
+  statusMessage.textContent = currentLanguage === "ko" ? "프로필을 선택하거나 새로 만드세요." : "Choose or create a profile.";
+});
+
 saveProfileBtn.addEventListener("click", async () => {
   await saveProfileToFirestore();
 });
-
 
 bulkSelectPanel.addEventListener("click", async (event) => {
   const button = event.target.closest("button");
@@ -882,33 +1175,14 @@ bulkSelectPanel.addEventListener("click", async (event) => {
 });
 
 clearMyDatesBtn.addEventListener("click", async () => {
-  if (!isRoomUnlocked) {
-    statusMessage.textContent = "날짜를 지우기 전에 방을 먼저 열어주세요.";
+  if (!myProfile.id) {
+    statusMessage.textContent = currentLanguage === "ko" ? "날짜를 지우기 전에 프로필을 먼저 열어주세요." : "Open a profile before clearing dates.";
     return;
   }
 
-  saveProfileLocally();
-
-  if (!myProfile.name) {
-    statusMessage.textContent = "이름을 먼저 입력해주세요.";
-    return;
-  }
-
-  await setDoc(
-    getUserDocRef(),
-    {
-      id: myProfile.id,
-      name: myProfile.name,
-      color: myProfile.color,
-      dates: [],
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-
-  statusMessage.textContent = "내가 선택한 날짜가 모두 지워졌습니다.";
+  await saveProfileToFirestore([]);
+  statusMessage.textContent = currentLanguage === "ko" ? "내가 선택한 날짜가 모두 지워졌습니다." : "Your selected dates were cleared.";
 });
-
 
 roomPasswordInput.addEventListener("keydown", async (event) => {
   if (event.key === "Enter") {
@@ -941,19 +1215,24 @@ nextMonthBtn.addEventListener("click", () => {
   updateQuickSelectButtonStates();
 });
 
-window.addEventListener("popstate", async () => {
+window.addEventListener("popstate", () => {
   const params = new URLSearchParams(window.location.search);
   const roomId = sanitizeRoomId(params.get("room")) || "";
   currentRoomId = roomId;
   updateRoomDisplay();
-  setLockedUI(roomId ? "계속하려면 방 비밀번호를 다시 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
+  setLockedUI(roomId
+    ? (currentLanguage === "ko" ? "계속하려면 방 비밀번호를 다시 입력하세요." : "Enter the room password again to continue.")
+    : t("lockedDefault"));
 });
 
 if (currentRoomId) {
   roomLinkInput.value = getRoomUrl(currentRoomId);
 }
+
 applyLanguage(currentLanguage);
 updateRoomDisplay();
-setLockedUI(currentRoomId ? "이 방을 열려면 방 비밀번호를 입력하세요." : "새 방을 만들거나 공유받은 링크를 열어주세요.");
+setLockedUI(currentRoomId
+  ? (currentLanguage === "ko" ? "이 방을 열려면 방 비밀번호를 입력하세요." : "Enter the room password to open this room.")
+  : t("lockedDefault"));
 renderCalendar();
 renderBestDates();

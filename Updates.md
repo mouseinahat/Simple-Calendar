@@ -2,7 +2,40 @@
 
 # Simple Calendar — Planned Updates
 
-Current Version: v0.8.2
+Current Version: v1.1.0
+
+---
+
+# Completed — Prompt 10 Room-Based Profile System
+
+## Summary
+
+Browser-local identity has been replaced with profiles stored inside each room.
+
+After entering a room password, users can:
+
+* Select an existing room profile
+* Enter that profile password
+* Create a new profile with name, password, and color
+* Edit that profile availability from any browser or device
+
+## Firestore
+
+Profiles are stored at:
+
+```txt
+rooms/{roomId}/profiles/{profileId}
+  name
+  color
+  passwordHash
+  availability
+  createdAt
+  updatedAt
+```
+
+Profile passwords are stored as SHA-256 hashes.
+
+Existing legacy `rooms/{roomId}/users/{userId}` availability remains visible, and saving a legacy profile moves it into the new `profiles` structure.
 
 ---
 

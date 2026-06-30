@@ -72,7 +72,57 @@
 
       <div id="lockedNotice" class="locked-notice">새 방을 만들거나 공유받은 링크를 열어주세요.</div>
 
+      <div id="profileAccessPanel" class="profile-card hidden">
+        <div class="profile-access-header">
+          <div>
+            <h2 id="profileAccessHeading">프로필 선택</h2>
+            <p id="profileAccessHelp" class="subtitle">이 방에서 사용할 프로필을 선택하거나 새로 만드세요.</p>
+          </div>
+        </div>
+
+        <div id="profileList" class="profile-list"></div>
+
+        <div id="profileLoginPanel" class="profile-login-panel hidden">
+          <h3 id="profileLoginHeading">프로필 비밀번호</h3>
+          <p id="selectedProfileName" class="subtitle"></p>
+          <div class="password-row">
+            <label>
+              <span id="profilePasswordLabel">프로필 비밀번호</span>
+              <input id="profilePassword" type="password" placeholder="프로필 비밀번호 입력" />
+            </label>
+            <button id="loginProfileBtn" type="button">프로필 열기</button>
+          </div>
+        </div>
+
+        <div class="create-profile-panel">
+          <h3 id="createProfileHeading">새 프로필 만들기</h3>
+          <div class="form-grid profile-create-grid">
+            <label>
+              <span id="newProfileNameLabel">이름</span>
+              <input id="newProfileName" type="text" placeholder="이름 입력" />
+            </label>
+            <label>
+              <span id="newProfilePasswordLabel">프로필 비밀번호</span>
+              <input id="newProfilePassword" type="password" placeholder="프로필 비밀번호 설정" />
+            </label>
+            <label>
+              <span id="newProfileColorLabel">색상</span>
+              <input id="newProfileColor" type="color" value="#4f46e5" />
+            </label>
+          </div>
+          <button id="createProfileBtn" type="button">새 프로필 만들기</button>
+        </div>
+      </div>
+
       <div id="userControls" class="profile-card hidden">
+        <div class="active-profile-row">
+          <div>
+            <p id="activeProfileEyebrow" class="eyebrow">활성 프로필</p>
+            <h2 id="activeProfileName">프로필 없음</h2>
+          </div>
+          <button id="switchProfileBtn" type="button" class="secondary">프로필 변경</button>
+        </div>
+
         <div class="form-grid two-columns">
           <label>
             <span id="myNameLabel">내 이름</span>
@@ -141,6 +191,6 @@
     </section>
   </main>
 
-  <script type="module" src="script.js?v=082"></script>
+  <script type="module" src="script.js?v=110"></script>
 </body>
 </html>

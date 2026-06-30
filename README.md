@@ -19,6 +19,7 @@ Users can:
 * Create a calendar room
 * Share a room link
 * Protect rooms with a password
+* Select or create a room-based profile
 * Mark available dates
 * See other participants' availability
 * Automatically find the best meeting dates
@@ -74,11 +75,21 @@ Changes made by one user are automatically synchronized with all participants.
 
 Each participant can:
 
-* Enter their name
-* Choose a personal color
+* Create a profile inside a room
+* Protect that profile with a password
+* Use the same profile across browsers and devices
+* Edit their name and personal color
 * Select available dates
 
 Availability is displayed directly on the shared calendar.
+
+Profiles are stored in Firestore under:
+
+```txt
+rooms/{roomId}/profiles/{profileId}
+```
+
+Profile passwords are stored as SHA-256 hashes, not plaintext.
 
 ---
 
@@ -178,56 +189,30 @@ Simple-Calendar/
 # Current Version
 
 ```txt
-v0.8.2
+v1.1.0
 ```
 
 ---
 
 # Planned Features
 
-## Step 8.1
+## Prompt 11
 
-Quick Select Toggle
+Calendar Header Quick Select
 
-* Click once → Select
-* Click again → Deselect
-
----
-
-## Step 9
-
-Developer Administration Page
-
-Features:
-
-* View all rooms
-* View participant counts
-* Delete rooms
-* Password-protected admin access
+* Click the month title to toggle all days
+* Click weekday headers to toggle that weekday
+* Remove the separate quick-select panel
 
 ---
 
-## Step 9.1
+## Prompt 12
 
-Soft Delete
+Restore Deleted Rooms
 
-Rooms are marked:
-
-```javascript
-deleted: true
-```
-
-instead of being permanently removed.
-
----
-
-## Step 9.2
-
-Security Improvements
-
-* Firebase Authentication
-* Firestore Security Rules
-* Secure Developer Access
+* Show active and deleted rooms in the developer page
+* Restore soft-deleted rooms
+* Filter rooms by status
 
 ---
 
