@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/fireba
 import {
   getFirestore,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   setDoc,
@@ -46,6 +47,10 @@ const newRoomTitleInput = document.getElementById("newRoomTitle");
 const newRoomPasswordInput = document.getElementById("newRoomPassword");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const clearMyDatesBtn = document.getElementById("clearMyDatesBtn");
+const updateProfilePasswordBtn = document.getElementById("updateProfilePasswordBtn");
+const deleteProfileBtn = document.getElementById("deleteProfileBtn");
+const profilePasswordUpdatePanel = document.getElementById("profilePasswordUpdatePanel");
+const profilePasswordUpdateInput = document.getElementById("profilePasswordUpdate");
 const statusMessage = document.getElementById("statusMessage");
 const legendList = document.getElementById("legendList");
 const currentRoomLabel = document.getElementById("currentRoomLabel");
@@ -137,6 +142,10 @@ const translations = {
     userNamePlaceholder: "이름 입력",
     myColorLabel: "내 색상",
     saveProfileBtn: "프로필 저장",
+    updateProfilePasswordBtn: "비밀번호 설정",
+    profilePasswordUpdateLabel: "새 프로필 비밀번호",
+    profilePasswordUpdatePlaceholder: "새 비밀번호 입력",
+    deleteProfileBtn: "프로필 삭제",
     clearMyDatesBtn: "내 날짜 모두 지우기",
     bulkTitle: "이번 달 빠른 선택",
     bulkHelp: "현재 보고 있는 월에서 가능한 요일을 한 번에 선택할 수 있습니다. 선택 즉시 달력과 추천 날짜에 반영됩니다.",
@@ -194,6 +203,10 @@ const translations = {
     userNamePlaceholder: "Enter name",
     myColorLabel: "My color",
     saveProfileBtn: "Save profile",
+    updateProfilePasswordBtn: "Set password",
+    profilePasswordUpdateLabel: "New profile password",
+    profilePasswordUpdatePlaceholder: "Enter new password",
+    deleteProfileBtn: "Delete profile",
     clearMyDatesBtn: "Clear my dates",
     bulkTitle: "Quick select this month",
     bulkHelp: "Select all matching weekdays in the currently displayed month. Changes are reflected immediately on the calendar and recommendations.",
@@ -276,7 +289,8 @@ function applyLanguage(language) {
     "loginProfileBtn", "createProfileHeading", "newProfileNameLabel",
     "newProfilePasswordLabel", "newProfileColorLabel", "createProfileBtn",
     "activeProfileEyebrow", "switchProfileBtn", "myNameLabel", "myColorLabel",
-    "saveProfileBtn", "clearMyDatesBtn",
+    "saveProfileBtn", "updateProfilePasswordBtn", "profilePasswordUpdateLabel",
+    "deleteProfileBtn", "clearMyDatesBtn",
     "recommendationHeading", "recommendationHelp", "legendHeading"
   ].forEach((id) => setText(id, t(id)));
 
@@ -287,6 +301,7 @@ function applyLanguage(language) {
   setPlaceholder("newProfileName", t("newProfileNamePlaceholder"));
   setPlaceholder("newProfilePassword", t("newProfilePasswordPlaceholder"));
   setPlaceholder("userName", t("userNamePlaceholder"));
+  setPlaceholder("profilePasswordUpdate", t("profilePasswordUpdatePlaceholder"));
 
   const weekdayHeaderIds = ["weekSun", "weekMon", "weekTue", "weekWed", "weekThu", "weekFri", "weekSat"];
   t("weekdaysShort").forEach((label, index) => {
@@ -381,6 +396,10 @@ function getRoomDocRef(roomId = currentRoomId) {
 
 function getProfileDocRef(profileId = myProfile.id) {
   return doc(db, "rooms", currentRoomId, "profiles", profileId);
+}
+
+function getLegacyUserDocRef(userId = myProfile.id) {
+  return doc(db, "rooms", currentRoomId, "users", userId);
 }
 
 function getProfilesCollectionRef() {
@@ -669,6 +688,105 @@ async function saveProfileToFirestore(extraDates = null, options = {}) {
     }
   } catch (error) {
     showError(currentLanguage === "ko" ? "프로필 저장" : "Save profile", error);
+  }
+}
+
+async function updateProfilePassword() {
+  try {
+    if (!isRoomUnlocked || !myProfile.id) {
+      statusMessage.textContent = currentLanguage === "ko" ? "비밀번호를 설정하기 전에 프로필을 먼저 열어주세요." : "Open a profile before setting a password.";
+      return;
+    }
+
+    if (profilePasswordUpdatePanel.classList.contains("hidden")) {
+      profilePasswordUpdatePanel.classList.remove("hidden");
+      profilePasswordUpdateInput.focus();
+      return;
+    }
+
+    const password = profilePasswordUpdateInput.value.trim();
+    if (!password) {
+      statusMessage.textContent = currentLanguage === "ko" ? "새 프로필 비밀번호를 입력해주세요." : "Enter a new profile password.";
+      profilePasswordUpdateInput.focus();
+      return;
+    }
+
+    saveProfileLocally();
+    const currentUser = users.find((user) => user.id === myProfile.id);
+    const availability = currentUser?.availability || currentUser?.dates || [];
+    const passwordHash = await hashPassword(password);
+
+    selectedProfile = {
+      ...(selectedProfile || {}),
+      id: myProfile.id,
+      name: myProfile.name,
+      color: myProfile.color,
+      passwordHash,
+      availability
+    };
+
+    applyProfileOptimistically(availability);
+    await withTimeout(setDoc(
+      getProfileDocRef(),
+      {
+        id: myProfile.id,
+        name: myProfile.name,
+        color: myProfile.color,
+        passwordHash,
+        availability,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    ), "Update profile password");
+
+    profilePasswordUpdateInput.value = "";
+    profilePasswordUpdatePanel.classList.add("hidden");
+    renderProfileList();
+    statusMessage.textContent = currentLanguage === "ko" ? "프로필 비밀번호가 저장되었습니다." : "Profile password saved.";
+  } catch (error) {
+    showError(currentLanguage === "ko" ? "프로필 비밀번호 설정" : "Set profile password", error);
+  }
+}
+
+async function deleteCurrentProfile() {
+  try {
+    if (!isRoomUnlocked || !myProfile.id) {
+      statusMessage.textContent = currentLanguage === "ko" ? "삭제하기 전에 프로필을 먼저 열어주세요." : "Open a profile before deleting.";
+      return;
+    }
+
+    const profileName = myProfile.name || t("unnamed");
+    const confirmed = window.confirm(
+      currentLanguage === "ko"
+        ? `${profileName} 프로필을 삭제할까요? 이 프로필의 선택 날짜도 함께 사라집니다.`
+        : `Delete the ${profileName} profile? Its selected dates will also be removed.`
+    );
+    if (!confirmed) return;
+
+    const profileId = myProfile.id;
+    await withTimeout(Promise.all([
+      deleteDoc(getProfileDocRef(profileId)),
+      deleteDoc(getLegacyUserDocRef(profileId))
+    ]), "Delete profile");
+
+    users = users.filter((user) => user.id !== profileId);
+    localStorage.removeItem(getRoomProfileStorageKey());
+    myProfile = { id: "", name: "", color: "#4f46e5" };
+    selectedProfile = null;
+    profilePasswordUpdateInput.value = "";
+    profilePasswordUpdatePanel.classList.add("hidden");
+    userControls.classList.add("hidden");
+    calendarSection.classList.add("hidden");
+    recommendationSection.classList.add("hidden");
+    profileAccessPanel.classList.remove("hidden");
+    renderProfileList();
+    renderCalendar();
+    renderLegend();
+    renderBestDates();
+    updateActiveProfileDisplay();
+    statusMessage.textContent = currentLanguage === "ko" ? "프로필이 삭제되었습니다." : "Profile deleted.";
+  } catch (error) {
+    showError(currentLanguage === "ko" ? "프로필 삭제" : "Delete profile", error);
   }
 }
 
@@ -1157,6 +1275,8 @@ createProfileBtn.addEventListener("click", createProfile);
 switchProfileBtn.addEventListener("click", () => {
   myProfile = { id: "", name: "", color: "#4f46e5" };
   selectedProfile = null;
+  profilePasswordUpdateInput.value = "";
+  profilePasswordUpdatePanel.classList.add("hidden");
   userControls.classList.add("hidden");
   calendarSection.classList.add("hidden");
   recommendationSection.classList.add("hidden");
@@ -1169,6 +1289,12 @@ switchProfileBtn.addEventListener("click", () => {
 saveProfileBtn.addEventListener("click", async () => {
   await saveProfileToFirestore();
 });
+
+updateProfilePasswordBtn.addEventListener("click", updateProfilePassword);
+profilePasswordUpdateInput.addEventListener("keydown", async (event) => {
+  if (event.key === "Enter") await updateProfilePassword();
+});
+deleteProfileBtn.addEventListener("click", deleteCurrentProfile);
 
 monthLabel.addEventListener("click", async () => {
   const allDates = getDatesInCurrentMonthByWeekday(null);

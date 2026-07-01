@@ -80,6 +80,8 @@ Each participant can:
 * Protect that profile with a password
 * Use the same profile across browsers and devices
 * Edit their name and personal color
+* Set or change their profile password
+* Delete their profile when it is no longer needed
 * Select available dates
 
 Availability is displayed directly on the shared calendar.
@@ -142,6 +144,17 @@ Users can quickly select or deselect dates in the current month:
 
 ---
 
+## Developer Administration
+
+The developer page can:
+
+* View all rooms
+* Filter rooms by All, Active, or Deleted
+* Soft-delete active rooms
+* Restore deleted rooms
+
+---
+
 # Technology Stack
 
 Frontend:
@@ -180,20 +193,20 @@ Simple-Calendar/
 # Current Version
 
 ```txt
-v1.1.1
+v1.2.0
 ```
 
 ---
 
 # Planned Features
 
-## Prompt 12
+## Prompt 13
 
-Restore Deleted Rooms
+Final Date Confirmation
 
-* Show active and deleted rooms in the developer page
-* Restore soft-deleted rooms
-* Filter rooms by status
+* Host selects final date
+* Store final date in Firestore
+* Show final date to all users
 
 ---
 

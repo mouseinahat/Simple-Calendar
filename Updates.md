@@ -2,7 +2,37 @@
 
 # Simple Calendar — Planned Updates
 
-Current Version: v1.1.1
+Current Version: v1.2.0
+
+---
+
+# Completed - Prompt 12 Restore Deleted Rooms
+
+## Summary
+
+The developer administration page now supports restoring soft-deleted rooms.
+
+Admins can:
+
+* Filter rooms by All, Active, or Deleted.
+* Delete active rooms with `deleted: true`.
+* Restore deleted rooms with `deleted: false`.
+* Track restore time with `restoredAt`.
+
+Deleted rooms remain inaccessible from the calendar until restored.
+
+---
+
+# Completed - Profile Management Controls
+
+## Summary
+
+Active profiles can now be managed after login:
+
+* Set or change the current profile password.
+* Store updated profile passwords as SHA-256 hashes.
+* Delete the current profile and its selected availability.
+* Remove matching legacy user records when deleting a migrated profile.
 
 ---
 

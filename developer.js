@@ -70,6 +70,10 @@ const roomsList = document.getElementById("roomsList");
 const roomCount = document.getElementById("roomCount");
 const loginStatus = document.getElementById("loginStatus");
 const adminStatus = document.getElementById("adminStatus");
+const filterButtons = document.querySelectorAll(".filter-tabs button[data-filter]");
+
+let allRooms = [];
+let currentFilter = "all";
 
 function formatDate(value) {
   if (!value) return "Unknown";
@@ -89,8 +93,47 @@ function formatDate(value) {
 }
 
 async function getUserCount(roomId) {
-  const usersSnapshot = await getDocs(collection(db, "rooms", roomId, "users"));
-  return usersSnapshot.size;
+  const [profilesSnapshot, usersSnapshot] = await Promise.all([
+    getDocs(collection(db, "rooms", roomId, "profiles")),
+    getDocs(collection(db, "rooms", roomId, "users"))
+  ]);
+  const participantIds = new Set([
+    ...profilesSnapshot.docs.map((profile) => profile.id),
+    ...usersSnapshot.docs.map((user) => user.id)
+  ]);
+  return participantIds.size;
+}
+
+function getVisibleRooms() {
+  if (currentFilter === "active") return allRooms.filter((room) => !room.deleted);
+  if (currentFilter === "deleted") return allRooms.filter((room) => room.deleted);
+  return allRooms;
+}
+
+function renderRooms() {
+  roomsList.innerHTML = "";
+  const visibleRooms = getVisibleRooms();
+  const activeCount = allRooms.filter((room) => !room.deleted).length;
+  const deletedCount = allRooms.filter((room) => room.deleted).length;
+
+  roomCount.textContent = `${visibleRooms.length} shown / ${allRooms.length} rooms (${activeCount} active, ${deletedCount} deleted)`;
+
+  if (visibleRooms.length === 0) {
+    roomsList.innerHTML = `<div class="empty">No rooms match this filter.</div>`;
+    return;
+  }
+
+  visibleRooms.forEach(renderRoomCard);
+}
+
+function setRoomFilter(filter) {
+  currentFilter = filter;
+  filterButtons.forEach((button) => {
+    const active = button.dataset.filter === filter;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  renderRooms();
 }
 
 async function loadRooms() {
@@ -102,13 +145,14 @@ async function loadRooms() {
     const roomsSnapshot = await getDocs(collection(db, "rooms"));
 
     if (roomsSnapshot.empty) {
+      allRooms = [];
       roomCount.textContent = "0 rooms";
       roomsList.innerHTML = `<div class="empty">아직 생성된 방이 없습니다.</div>`;
       adminStatus.textContent = "";
       return;
     }
 
-    const rooms = await Promise.all(
+    allRooms = await Promise.all(
       roomsSnapshot.docs.map(async (roomDocument) => {
         const data = roomDocument.data();
         const userCount = await getUserCount(roomDocument.id);
@@ -118,19 +162,20 @@ async function loadRooms() {
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
           deleted: data.deleted === true,
+          deletedAt: data.deletedAt,
+          restoredAt: data.restoredAt,
           userCount
         };
       })
     );
 
-    rooms.sort((a, b) => {
+    allRooms.sort((a, b) => {
       const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
       const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
       return bTime - aTime;
     });
 
-    roomCount.textContent = `${rooms.length} rooms found`;
-    rooms.forEach(renderRoomCard);
+    renderRooms();
     adminStatus.textContent = "방 목록을 불러왔습니다.";
   } catch (error) {
     console.error(error);
@@ -156,8 +201,11 @@ function renderRoomCard(room) {
   meta.innerHTML = `
     <div><span>Room ID:</span> ${room.id}</div>
     <div><span>Created:</span> ${formatDate(room.createdAt)}</div>
+    <div><span>Updated:</span> ${formatDate(room.updatedAt)}</div>
     <div><span>Users:</span> ${room.userCount}</div>
     <div><span>Status:</span> ${room.deleted ? "Deleted" : "Active"}</div>
+    ${room.deleted ? `<div><span>Deleted:</span> ${formatDate(room.deletedAt)}</div>` : ""}
+    ${room.restoredAt ? `<div><span>Restored:</span> ${formatDate(room.restoredAt)}</div>` : ""}
   `;
 
   info.appendChild(title);
@@ -171,38 +219,45 @@ function renderRoomCard(room) {
   openLink.href = `./?room=${room.id}`;
   openLink.textContent = "Open";
 
-  const deleteBtn = document.createElement("button");
-  deleteBtn.type = "button";
-  deleteBtn.className = "danger";
-  deleteBtn.textContent = room.deleted ? "Already Deleted" : "Delete";
-  deleteBtn.disabled = room.deleted;
+  const statusBtn = document.createElement("button");
+  statusBtn.type = "button";
+  statusBtn.className = room.deleted ? "restore" : "danger";
+  statusBtn.textContent = room.deleted ? "Restore" : "Delete";
 
-  deleteBtn.addEventListener("click", async () => {
-    const confirmed = window.confirm(`이 방을 삭제 처리할까요?\n\n${room.title}\n${room.id}`);
+  statusBtn.addEventListener("click", async () => {
+    const action = room.deleted ? "복구" : "삭제 처리";
+    const confirmed = window.confirm(`이 방을 ${action}할까요?\n\n${room.title}\n${room.id}`);
     if (!confirmed) return;
 
     try {
       await ensureAnonymousAuth();
-      deleteBtn.disabled = true;
-      deleteBtn.textContent = "Deleting...";
+      statusBtn.disabled = true;
+      statusBtn.textContent = room.deleted ? "Restoring..." : "Deleting...";
 
-      await updateDoc(doc(db, "rooms", room.id), {
-        deleted: true,
-        deletedAt: serverTimestamp()
-      });
+      await updateDoc(doc(db, "rooms", room.id), room.deleted
+        ? {
+            deleted: false,
+            restoredAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }
+        : {
+            deleted: true,
+            deletedAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
 
-      adminStatus.textContent = "방이 삭제 처리되었습니다.";
+      adminStatus.textContent = room.deleted ? "방이 복구되었습니다." : "방이 삭제 처리되었습니다.";
       await loadRooms();
     } catch (error) {
       console.error(error);
-      adminStatus.textContent = `삭제 실패: ${error.message}`;
-      deleteBtn.disabled = false;
-      deleteBtn.textContent = "Delete";
+      adminStatus.textContent = `${room.deleted ? "복구" : "삭제"} 실패: ${error.message}`;
+      statusBtn.disabled = false;
+      statusBtn.textContent = room.deleted ? "Restore" : "Delete";
     }
   });
 
   controls.appendChild(openLink);
-  controls.appendChild(deleteBtn);
+  controls.appendChild(statusBtn);
 
   top.appendChild(info);
   top.appendChild(controls);
@@ -239,6 +294,10 @@ developerPasswordInput.addEventListener("keydown", (event) => {
 });
 
 refreshBtn.addEventListener("click", loadRooms);
+
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => setRoomFilter(button.dataset.filter));
+});
 
 if (sessionStorage.getItem("simpleCalendarDeveloperUnlocked") === "true") {
   loginPanel.classList.add("hidden");

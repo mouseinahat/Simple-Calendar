@@ -129,6 +129,14 @@ button.danger:hover {
   background: var(--danger-dark);
 }
 
+button.restore {
+  background: #16a34a;
+}
+
+button.restore:hover {
+  background: #15803d;
+}
+
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -146,6 +154,29 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.filter-tabs button {
+  min-height: 38px;
+  border-radius: 12px;
+  background: transparent;
+  color: #475569;
+}
+
+.filter-tabs button.active {
+  background: var(--primary);
+  color: #fff;
 }
 
 .rooms-list {
@@ -215,5 +246,6 @@ button:disabled {
   .hero-panel, .panel { padding: 18px; border-radius: 22px; }
   .admin-header, .room-top { flex-direction: column; }
   button, .home-link { width: 100%; }
-  .actions { width: 100%; }
+  .actions, .filter-tabs { width: 100%; }
+  .filter-tabs button { flex: 1; }
 }
