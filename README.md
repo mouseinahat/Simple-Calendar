@@ -21,6 +21,7 @@ Users can:
 * Protect rooms with a password
 * Select or create a room-based profile
 * Mark available dates
+* Quickly toggle the current month or weekdays from the calendar header
 * See other participants' availability
 * Automatically find the best meeting dates
 
@@ -132,22 +133,12 @@ Responsive layout supports:
 
 ---
 
-## Quick Selection Tools
+## Calendar Header Quick Selection
 
-Users can quickly select:
+Users can quickly select or deselect dates in the current month:
 
-```txt
-일
-월
-화
-수
-목
-금
-토
-모두선택
-```
-
-Current month only.
+* Click the month title to toggle every date in the displayed month.
+* Click a weekday header to toggle every matching weekday.
 
 ---
 
@@ -189,22 +180,12 @@ Simple-Calendar/
 # Current Version
 
 ```txt
-v1.1.0
+v1.1.1
 ```
 
 ---
 
 # Planned Features
-
-## Prompt 11
-
-Calendar Header Quick Select
-
-* Click the month title to toggle all days
-* Click weekday headers to toggle that weekday
-* Remove the separate quick-select panel
-
----
 
 ## Prompt 12
 

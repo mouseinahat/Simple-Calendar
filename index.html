@@ -138,22 +138,6 @@
           <button id="clearMyDatesBtn" type="button" class="secondary">내 날짜 모두 지우기</button>
         </div>
 
-        <div id="bulkSelectPanel" class="bulk-select-panel">
-          <div>
-            <h3 id="bulkTitle">이번 달 빠른 선택</h3>
-            <p id="bulkHelp">현재 보고 있는 월에서 가능한 요일을 한 번에 선택할 수 있습니다. 선택 즉시 달력과 추천 날짜에 반영됩니다.</p>
-          </div>
-          <div class="weekday-select-buttons" aria-label="요일별 빠른 선택">
-            <button id="weekdaySun" type="button" data-weekday="0">일</button>
-            <button id="weekdayMon" type="button" data-weekday="1">월</button>
-            <button id="weekdayTue" type="button" data-weekday="2">화</button>
-            <button id="weekdayWed" type="button" data-weekday="3">수</button>
-            <button id="weekdayThu" type="button" data-weekday="4">목</button>
-            <button id="weekdayFri" type="button" data-weekday="5">금</button>
-            <button id="weekdaySat" type="button" data-weekday="6">토</button>
-            <button id="selectAllBtn" type="button" data-select-all="true" class="all-select-btn">모두선택</button>
-          </div>
-        </div>
       </div>
 
       <p id="statusMessage" class="status">방을 만들거나 기존 방을 열어주세요.</p>
@@ -162,18 +146,18 @@
     <section id="calendarSection" class="calendar-card hidden">
       <header class="calendar-header">
         <button id="prevMonthBtn" class="nav-btn" type="button" aria-label="이전 달">‹</button>
-        <h2 id="monthLabel">월 년도</h2>
+        <button id="monthLabel" class="month-toggle" type="button" data-select-all="true">월 년도</button>
         <button id="nextMonthBtn" class="nav-btn" type="button" aria-label="다음 달">›</button>
       </header>
 
       <div class="weekdays">
-        <div id="weekSun">일</div>
-        <div id="weekMon">월</div>
-        <div id="weekTue">화</div>
-        <div id="weekWed">수</div>
-        <div id="weekThu">목</div>
-        <div id="weekFri">금</div>
-        <div id="weekSat">토</div>
+        <button id="weekSun" type="button" data-weekday="0">일</button>
+        <button id="weekMon" type="button" data-weekday="1">월</button>
+        <button id="weekTue" type="button" data-weekday="2">화</button>
+        <button id="weekWed" type="button" data-weekday="3">수</button>
+        <button id="weekThu" type="button" data-weekday="4">목</button>
+        <button id="weekFri" type="button" data-weekday="5">금</button>
+        <button id="weekSat" type="button" data-weekday="6">토</button>
       </div>
 
       <div id="calendarGrid" class="calendar-grid"></div>
@@ -191,6 +175,6 @@
     </section>
   </main>
 
-  <script type="module" src="script.js?v=110"></script>
+  <script type="module" src="script.js?v=111"></script>
 </body>
 </html>

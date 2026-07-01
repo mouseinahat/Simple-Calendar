@@ -2,11 +2,27 @@
 
 # Simple Calendar — Planned Updates
 
-Current Version: v1.1.0
+Current Version: v1.1.1
 
 ---
 
-# Completed — Prompt 10 Room-Based Profile System
+# Completed - Prompt 11 Calendar Header Quick Select
+
+## Summary
+
+The separate quick-select panel has been removed.
+
+Calendar quick selection now happens directly from the calendar header:
+
+* Click the month title to select or deselect every date in the displayed month.
+* Click a weekday header to select or deselect every matching weekday in the displayed month.
+* Header controls show selected state when every matching date is already selected.
+
+This keeps the existing toggle behavior while reducing duplicate mobile UI controls.
+
+---
+
+# Completed - Prompt 10 Room-Based Profile System
 
 ## Summary
 

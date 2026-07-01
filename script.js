@@ -59,7 +59,6 @@ const recommendationSection = document.getElementById("recommendationSection");
 const bestDatesList = document.getElementById("bestDatesList");
 const userControls = document.getElementById("userControls");
 const lockedNotice = document.getElementById("lockedNotice");
-const bulkSelectPanel = document.getElementById("bulkSelectPanel");
 const langKoBtn = document.getElementById("langKoBtn");
 const langEnBtn = document.getElementById("langEnBtn");
 const profileAccessPanel = document.getElementById("profileAccessPanel");
@@ -277,7 +276,7 @@ function applyLanguage(language) {
     "loginProfileBtn", "createProfileHeading", "newProfileNameLabel",
     "newProfilePasswordLabel", "newProfileColorLabel", "createProfileBtn",
     "activeProfileEyebrow", "switchProfileBtn", "myNameLabel", "myColorLabel",
-    "saveProfileBtn", "clearMyDatesBtn", "bulkTitle", "bulkHelp",
+    "saveProfileBtn", "clearMyDatesBtn",
     "recommendationHeading", "recommendationHelp", "legendHeading"
   ].forEach((id) => setText(id, t(id)));
 
@@ -289,13 +288,10 @@ function applyLanguage(language) {
   setPlaceholder("newProfilePassword", t("newProfilePasswordPlaceholder"));
   setPlaceholder("userName", t("userNamePlaceholder"));
 
-  const weekdayButtonIds = ["weekdaySun", "weekdayMon", "weekdayTue", "weekdayWed", "weekdayThu", "weekdayFri", "weekdaySat"];
   const weekdayHeaderIds = ["weekSun", "weekMon", "weekTue", "weekWed", "weekThu", "weekFri", "weekSat"];
   t("weekdaysShort").forEach((label, index) => {
-    setText(weekdayButtonIds[index], label);
     setText(weekdayHeaderIds[index], label);
   });
-  setText("selectAllBtn", t("selectAllBtn"));
 
   updateRoomDisplay();
   updateActiveProfileDisplay();
@@ -676,20 +672,36 @@ async function saveProfileToFirestore(extraDates = null, options = {}) {
   }
 }
 
-async function addBulkDatesToMyCalendar(datesToAdd, label) {
+function getQuickSelectControls() {
+  return [
+    monthLabel,
+    ...document.querySelectorAll(".weekdays button[data-weekday]")
+  ].filter(Boolean);
+}
+
+async function toggleBulkDatesInMyCalendar(targetDates, label) {
   try {
     if (!myProfile.id) {
       statusMessage.textContent = currentLanguage === "ko" ? "빠른 선택을 하기 전에 프로필을 먼저 열어주세요." : "Open a profile before using quick select.";
       return;
     }
 
-    if (!datesToAdd.length) {
+    if (!targetDates.length) {
       statusMessage.textContent = currentLanguage === "ko" ? "현재 월에 선택할 날짜가 없습니다." : "There are no dates to select in the current month.";
       return;
     }
 
     const dates = getCurrentProfileDates();
-    datesToAdd.forEach((dateKey) => dates.add(dateKey));
+    const allSelected = targetDates.every((dateKey) => dates.has(dateKey));
+
+    targetDates.forEach((dateKey) => {
+      if (allSelected) {
+        dates.delete(dateKey);
+      } else {
+        dates.add(dateKey);
+      }
+    });
+
     const sortedDates = Array.from(dates).sort();
 
     applyProfileOptimistically(sortedDates);
@@ -699,16 +711,17 @@ async function addBulkDatesToMyCalendar(datesToAdd, label) {
     updateQuickSelectButtonStates();
 
     await saveProfileToFirestore(sortedDates, { silent: true });
-    statusMessage.textContent = currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`;
+    statusMessage.textContent = allSelected
+      ? (currentLanguage === "ko" ? `${label} 날짜가 해제되었습니다.` : `${label} dates were deselected.`)
+      : (currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`);
   } catch (error) {
     showError(currentLanguage === "ko" ? "빠른 선택" : "Quick select", error);
   }
 }
 
 function updateQuickSelectButtonStates() {
-  if (!bulkSelectPanel) return;
   const selectedDates = getCurrentProfileDates();
-  const buttons = bulkSelectPanel.querySelectorAll("button[data-weekday], button[data-select-all]");
+  const buttons = getQuickSelectControls();
 
   buttons.forEach((button) => {
     let dates = [];
@@ -720,6 +733,7 @@ function updateQuickSelectButtonStates() {
 
     const allSelected = dates.length > 0 && dates.every((dateKey) => selectedDates.has(dateKey));
     button.classList.toggle("quick-selected", allSelected);
+    button.setAttribute("aria-pressed", String(allSelected));
   });
 }
 
@@ -1156,22 +1170,18 @@ saveProfileBtn.addEventListener("click", async () => {
   await saveProfileToFirestore();
 });
 
-bulkSelectPanel.addEventListener("click", async (event) => {
-  const button = event.target.closest("button");
-  if (!button) return;
+monthLabel.addEventListener("click", async () => {
+  const allDates = getDatesInCurrentMonthByWeekday(null);
+  await toggleBulkDatesInMyCalendar(allDates, currentLanguage === "ko" ? "이번 달 모든" : "All this month");
+});
 
-  if (button.dataset.selectAll === "true") {
-    const allDates = getDatesInCurrentMonthByWeekday(null);
-    await addBulkDatesToMyCalendar(allDates, currentLanguage === "ko" ? "이번 달 모든" : "All this month");
-    return;
-  }
-
-  if (button.dataset.weekday !== undefined) {
+document.querySelectorAll(".weekdays button[data-weekday]").forEach((button) => {
+  button.addEventListener("click", async () => {
     const weekday = Number(button.dataset.weekday);
     const weekdayLabels = t("weekdaysLong");
     const dates = getDatesInCurrentMonthByWeekday(weekday);
-    await addBulkDatesToMyCalendar(dates, currentLanguage === "ko" ? `이번 달 ${weekdayLabels[weekday]}` : `This month ${weekdayLabels[weekday]}`);
-  }
+    await toggleBulkDatesInMyCalendar(dates, currentLanguage === "ko" ? `이번 달 ${weekdayLabels[weekday]}` : `This month ${weekdayLabels[weekday]}`);
+  });
 });
 
 clearMyDatesBtn.addEventListener("click", async () => {
