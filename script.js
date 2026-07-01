@@ -62,6 +62,8 @@ const calendarSection = document.getElementById("calendarSection");
 const legendSection = document.getElementById("legendSection");
 const recommendationSection = document.getElementById("recommendationSection");
 const bestDatesList = document.getElementById("bestDatesList");
+const finalDateBanner = document.getElementById("finalDateBanner");
+const finalDateText = document.getElementById("finalDateText");
 const userControls = document.getElementById("userControls");
 const lockedNotice = document.getElementById("lockedNotice");
 const langKoBtn = document.getElementById("langKoBtn");
@@ -83,6 +85,7 @@ const today = new Date();
 let currentYear = today.getFullYear();
 let currentMonth = today.getMonth();
 let users = [];
+let unsubscribeRoom = null;
 let unsubscribeProfiles = null;
 let unsubscribeLegacyUsers = null;
 let isRoomUnlocked = false;
@@ -154,6 +157,11 @@ const translations = {
     selectAllBtn: "모두선택",
     recommendationHeading: "추천 날짜",
     recommendationHelp: "가장 많은 사람이 가능한 날짜는 달력에서 노란색으로 강조됩니다.",
+    finalDateEyebrow: "확정된 날짜",
+    finalDateEmpty: "아직 확정된 날짜가 없습니다.",
+    finalDateConfirmedPrefix: "확정 날짜",
+    confirmFinalDateBtn: "확정",
+    confirmedFinalDateBtn: "확정됨",
     legendHeading: "참여자 색상",
     peopleAvailable: "명 가능",
     emptyRecommendation: "이번 달에는 아직 선택된 가능 날짜가 없습니다.",
@@ -215,6 +223,11 @@ const translations = {
     selectAllBtn: "Select all",
     recommendationHeading: "Best dates",
     recommendationHelp: "Dates with the most available people are highlighted in yellow on the calendar.",
+    finalDateEyebrow: "Confirmed date",
+    finalDateEmpty: "No final date has been confirmed yet.",
+    finalDateConfirmedPrefix: "Confirmed date",
+    confirmFinalDateBtn: "Confirm",
+    confirmedFinalDateBtn: "Confirmed",
     legendHeading: "User colors",
     peopleAvailable: "available",
     emptyRecommendation: "No available dates have been selected for this month yet.",
@@ -291,7 +304,7 @@ function applyLanguage(language) {
     "activeProfileEyebrow", "switchProfileBtn", "myNameLabel", "myColorLabel",
     "saveProfileBtn", "updateProfilePasswordBtn", "profilePasswordUpdateLabel",
     "deleteProfileBtn", "clearMyDatesBtn",
-    "recommendationHeading", "recommendationHelp", "legendHeading"
+    "recommendationHeading", "recommendationHelp", "finalDateEyebrow", "legendHeading"
   ].forEach((id) => setText(id, t(id)));
 
   setPlaceholder("newRoomTitle", t("newRoomTitlePlaceholder"));
@@ -313,6 +326,7 @@ function applyLanguage(language) {
   renderProfileList();
   renderCalendar();
   renderBestDates();
+  renderFinalDateBanner();
   updateQuickSelectButtonStates();
   renderLegend();
 }
@@ -435,8 +449,10 @@ function updateActiveProfileDisplay() {
 }
 
 function stopRoomListeners() {
+  if (unsubscribeRoom) unsubscribeRoom();
   if (unsubscribeProfiles) unsubscribeProfiles();
   if (unsubscribeLegacyUsers) unsubscribeLegacyUsers();
+  unsubscribeRoom = null;
   unsubscribeProfiles = null;
   unsubscribeLegacyUsers = null;
 }
@@ -451,6 +467,7 @@ function setLockedUI(message = "Open a room before editing the calendar.") {
   stopRoomListeners();
 
   calendarSection.classList.add("hidden");
+  finalDateBanner.classList.add("hidden");
   legendSection.classList.add("hidden");
   recommendationSection.classList.add("hidden");
   userControls.classList.add("hidden");
@@ -467,11 +484,13 @@ function setLockedUI(message = "Open a room before editing the calendar.") {
   updateActiveProfileDisplay();
   renderCalendar();
   renderLegend();
+  renderFinalDateBanner();
 }
 
 function setRoomUnlockedUI() {
   isRoomUnlocked = true;
   calendarSection.classList.add("hidden");
+  renderFinalDateBanner();
   legendSection.classList.remove("hidden");
   recommendationSection.classList.add("hidden");
   userControls.classList.add("hidden");
@@ -482,6 +501,7 @@ function setRoomUnlockedUI() {
 
 function setProfileUnlockedUI() {
   calendarSection.classList.remove("hidden");
+  renderFinalDateBanner();
   legendSection.classList.remove("hidden");
   recommendationSection.classList.remove("hidden");
   userControls.classList.remove("hidden");
@@ -491,6 +511,7 @@ function setProfileUnlockedUI() {
   renderCalendar();
   renderLegend();
   renderBestDates();
+  renderFinalDateBanner();
   updateQuickSelectButtonStates();
 }
 
@@ -950,6 +971,27 @@ function startRoomProfileListeners() {
   stopRoomListeners();
   users = [];
 
+  unsubscribeRoom = onSnapshot(getRoomDocRef(), (snapshot) => {
+    if (!snapshot.exists()) {
+      setLockedUI(currentLanguage === "ko" ? "방을 찾을 수 없습니다. 새 방을 만들거나 링크를 확인해주세요." : "Room not found. Create a room or check the link.");
+      return;
+    }
+
+    const latestRoomData = snapshot.data();
+    if (latestRoomData.deleted === true) {
+      setLockedUI(currentLanguage === "ko" ? "이 방은 삭제되었습니다." : "This room has been deleted.");
+      return;
+    }
+
+    currentRoomData = latestRoomData;
+    updateRoomDisplay();
+    renderFinalDateBanner();
+    renderCalendar();
+    renderBestDates();
+  }, (error) => {
+    showError(currentLanguage === "ko" ? "방 동기화" : "Room sync", error);
+  });
+
   unsubscribeProfiles = onSnapshot(getProfilesCollectionRef(), (snapshot) => {
     const profiles = snapshot.docs.map(normalizeProfile);
     const legacyOnly = users.filter((user) => user.legacyOnly && !profiles.some((profile) => profile.id === user.id));
@@ -1029,6 +1071,29 @@ function formatDateLabel(dateKey) {
   });
 }
 
+function formatFullDateLabel(dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(currentLanguage === "ko" ? "ko-KR" : "en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long"
+  });
+}
+
+function renderFinalDateBanner() {
+  const finalDate = currentRoomData?.finalDate || "";
+
+  if (!isRoomUnlocked || !finalDate) {
+    finalDateBanner.classList.add("hidden");
+    finalDateText.textContent = t("finalDateEmpty");
+    return;
+  }
+
+  finalDateBanner.classList.remove("hidden");
+  finalDateText.textContent = `${t("finalDateConfirmedPrefix")}: ${formatFullDateLabel(finalDate)}`;
+}
+
 function renderBestDates() {
   bestDatesList.innerHTML = "";
 
@@ -1055,6 +1120,9 @@ function renderBestDates() {
   rankedDates.forEach(({ dateKey, people }) => {
     const item = document.createElement("li");
     item.className = "best-date-item";
+    if (currentRoomData?.finalDate === dateKey) {
+      item.classList.add("final-date-item");
+    }
 
     const header = document.createElement("div");
     header.className = "best-date-header";
@@ -1065,8 +1133,18 @@ function renderBestDates() {
     const countLabel = document.createElement("span");
     countLabel.textContent = currentLanguage === "ko" ? `${people.length}${t("peopleAvailable")}` : `${people.length} ${t("peopleAvailable")}`;
 
+    const confirmButton = document.createElement("button");
+    confirmButton.type = "button";
+    confirmButton.className = "confirm-final-date-btn";
+    confirmButton.textContent = currentRoomData?.finalDate === dateKey ? t("confirmedFinalDateBtn") : t("confirmFinalDateBtn");
+    confirmButton.disabled = currentRoomData?.finalDate === dateKey;
+    confirmButton.addEventListener("click", async () => {
+      await confirmFinalDate(dateKey);
+    });
+
     header.appendChild(dateLabel);
     header.appendChild(countLabel);
+    header.appendChild(confirmButton);
 
     const names = document.createElement("div");
     names.className = "best-date-names";
@@ -1083,6 +1161,38 @@ function renderBestDates() {
     item.appendChild(names);
     bestDatesList.appendChild(item);
   });
+}
+
+async function confirmFinalDate(dateKey) {
+  try {
+    if (!isRoomUnlocked) {
+      statusMessage.textContent = currentLanguage === "ko" ? "최종 날짜를 확정하기 전에 방을 먼저 열어주세요." : "Open a room before confirming a final date.";
+      return;
+    }
+
+    await withTimeout(setDoc(
+      getRoomDocRef(),
+      {
+        finalDate: dateKey,
+        finalDateSetAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    ), "Confirm final date");
+
+    currentRoomData = {
+      ...(currentRoomData || {}),
+      finalDate: dateKey
+    };
+    renderFinalDateBanner();
+    renderCalendar();
+    renderBestDates();
+    statusMessage.textContent = currentLanguage === "ko"
+      ? `최종 날짜가 ${formatFullDateLabel(dateKey)}로 확정되었습니다.`
+      : `Final date confirmed for ${formatFullDateLabel(dateKey)}.`;
+  } catch (error) {
+    showError(currentLanguage === "ko" ? "최종 날짜 확정" : "Confirm final date", error);
+  }
 }
 
 function renderLegend() {
@@ -1165,6 +1275,11 @@ function renderCalendar() {
 
     if (count > 0 && count === maxCount) {
       dayCell.classList.add("best-day");
+    }
+
+    if (currentRoomData?.finalDate === dateKey) {
+      dayCell.classList.add("final-day");
+      dayCell.setAttribute("aria-label", `${formatFullDateLabel(dateKey)} ${t("confirmedFinalDateBtn")}`);
     }
 
     const dotContainer = document.createElement("div");

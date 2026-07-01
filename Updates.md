@@ -2,7 +2,24 @@
 
 # Simple Calendar — Planned Updates
 
-Current Version: v1.2.0
+Current Version: v1.3.0
+
+---
+
+# Completed - Prompt 13 Final Date Confirmation
+
+## Summary
+
+Rooms can now store one confirmed meeting date.
+
+After opening a profile, users can:
+
+* Confirm a recommended date from the best-date list.
+* Store the final date in Firestore as `finalDate`.
+* Store the confirmation timestamp as `finalDateSetAt`.
+* See the confirmed date banner update in real time across clients.
+
+Confirmed dates are highlighted in the calendar and in the recommendation list.
 
 ---
 

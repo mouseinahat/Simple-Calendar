@@ -24,6 +24,7 @@ Users can:
 * Quickly toggle the current month or weekdays from the calendar header
 * See other participants' availability
 * Automatically find the best meeting dates
+* Confirm one final meeting date for the room
 
 ---
 
@@ -114,6 +115,22 @@ Example:
 
 ---
 
+## Final Date Confirmation
+
+After reviewing recommended dates, a room participant can confirm one final meeting date.
+
+The confirmed date is stored on the room document:
+
+```txt
+rooms/{roomId}
+  finalDate
+  finalDateSetAt
+```
+
+All users in the room see the confirmed date banner in real time.
+
+---
+
 ## Multi-Language Support
 
 Supported languages:
@@ -193,20 +210,20 @@ Simple-Calendar/
 # Current Version
 
 ```txt
-v1.2.0
+v1.3.0
 ```
 
 ---
 
 # Planned Features
 
-## Prompt 13
+## Prompt 14
 
-Final Date Confirmation
+Three-Level Availability
 
-* Host selects final date
-* Store final date in Firestore
-* Show final date to all users
+* Available / Maybe / Unavailable states
+* Weighted best-date scoring
+* Preserve existing recommendations
 
 ---
 
