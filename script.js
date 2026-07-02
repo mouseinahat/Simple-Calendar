@@ -97,6 +97,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const roomFromUrl = sanitizeRoomId(urlParams.get("room")) || "";
 let currentRoomId = roomFromUrl;
 let currentLanguage = localStorage.getItem("simpleCalendarLanguage") || "ko";
+let newProfileColorTouched = false;
 let myProfile = {
   id: "",
   name: "",
@@ -108,7 +109,12 @@ const AVAILABILITY_WEIGHTS = {
   maybe: 1,
   unavailable: 0
 };
-const AVAILABILITY_CYCLE = ["available", "maybe", "unavailable", null];
+const AVAILABILITY_CYCLE = ["available", "maybe", "unavailable"];
+const PROFILE_COLOR_PALETTE = [
+  "#4f46e5", "#dc2626", "#16a34a", "#f59e0b",
+  "#0891b2", "#9333ea", "#db2777", "#475569",
+  "#0f766e", "#ea580c", "#2563eb", "#65a30d"
+];
 
 const translations = {
   ko: {
@@ -169,6 +175,7 @@ const translations = {
     finalDateConfirmedPrefix: "확정 날짜",
     confirmFinalDateBtn: "확정",
     confirmedFinalDateBtn: "확정됨",
+    cancelFinalDateBtn: "확정 취소",
     availableLabel: "가능",
     maybeLabel: "미정",
     unavailableLabel: "불가",
@@ -238,6 +245,7 @@ const translations = {
     finalDateConfirmedPrefix: "Confirmed date",
     confirmFinalDateBtn: "Confirm",
     confirmedFinalDateBtn: "Confirmed",
+    cancelFinalDateBtn: "Cancel",
     availableLabel: "Available",
     maybeLabel: "Maybe",
     unavailableLabel: "Unavailable",
@@ -438,6 +446,17 @@ function getCurrentProfileDates() {
   return new Set(getAvailableDatesFromStatus(getCurrentProfileAvailabilityStatus()));
 }
 
+function getNextAvailableProfileColor() {
+  const usedColors = new Set(users.map((user) => String(user.color || "").toLowerCase()));
+  return PROFILE_COLOR_PALETTE.find((color) => !usedColors.has(color.toLowerCase()))
+    || PROFILE_COLOR_PALETTE[users.length % PROFILE_COLOR_PALETTE.length];
+}
+
+function updateNewProfileColorDefault() {
+  if (newProfileColorTouched) return;
+  newProfileColorInput.value = getNextAvailableProfileColor();
+}
+
 function getDatesInCurrentMonthByWeekday(weekday) {
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const dates = [];
@@ -570,6 +589,7 @@ function renderProfileList() {
 
   if (users.length === 0) {
     profileList.innerHTML = `<p class="status">${t("noProfiles")}</p>`;
+    updateNewProfileColorDefault();
     return;
   }
 
@@ -594,6 +614,7 @@ function renderProfileList() {
     item.appendChild(action);
     profileList.appendChild(item);
   });
+  updateNewProfileColorDefault();
 }
 
 function chooseProfileForLogin(profileId) {
@@ -681,6 +702,8 @@ async function createProfile() {
     localStorage.setItem(getRoomProfileStorageKey(), profileId);
     newProfileNameInput.value = "";
     newProfilePasswordInput.value = "";
+    newProfileColorTouched = false;
+    updateNewProfileColorDefault();
     setProfileUnlockedUI();
     statusMessage.textContent = currentLanguage === "ko" ? "새 프로필이 만들어졌습니다." : "New profile created.";
   } catch (error) {
@@ -1142,6 +1165,19 @@ function formatAvailabilityState(state) {
   return "";
 }
 
+function formatRecommendationSummary(people) {
+  const counts = people.reduce((summary, person) => {
+    summary[person.state] = (summary[person.state] || 0) + 1;
+    return summary;
+  }, {});
+
+  return [
+    counts.available ? `${formatAvailabilityState("available")} ${counts.available}` : "",
+    counts.maybe ? `${formatAvailabilityState("maybe")} ${counts.maybe}` : "",
+    counts.unavailable ? `${formatAvailabilityState("unavailable")} ${counts.unavailable}` : ""
+  ].filter(Boolean).join(" · ");
+}
+
 function formatAvailabilitySymbol(state) {
   if (state === "available") return "O";
   if (state === "maybe") return "?";
@@ -1197,7 +1233,7 @@ function renderBestDates() {
     return;
   }
 
-  rankedDates.forEach(({ dateKey, people, score }) => {
+  rankedDates.forEach(({ dateKey, people }) => {
     const item = document.createElement("li");
     item.className = "best-date-item";
     if (currentRoomData?.finalDate === dateKey) {
@@ -1211,13 +1247,13 @@ function renderBestDates() {
     dateLabel.textContent = formatDateLabel(dateKey);
 
     const countLabel = document.createElement("span");
-    countLabel.textContent = currentLanguage === "ko" ? `${score}점` : `${score} score`;
+    countLabel.textContent = formatRecommendationSummary(people);
 
     const confirmButton = document.createElement("button");
     confirmButton.type = "button";
     confirmButton.className = "confirm-final-date-btn";
-    confirmButton.textContent = currentRoomData?.finalDate === dateKey ? t("confirmedFinalDateBtn") : t("confirmFinalDateBtn");
-    confirmButton.disabled = currentRoomData?.finalDate === dateKey;
+    confirmButton.textContent = currentRoomData?.finalDate === dateKey ? t("cancelFinalDateBtn") : t("confirmFinalDateBtn");
+    confirmButton.classList.toggle("confirmed", currentRoomData?.finalDate === dateKey);
     confirmButton.addEventListener("click", async () => {
       await confirmFinalDate(dateKey);
     });
@@ -1250,26 +1286,35 @@ async function confirmFinalDate(dateKey) {
       return;
     }
 
+    const isCancelling = currentRoomData?.finalDate === dateKey;
     await withTimeout(setDoc(
       getRoomDocRef(),
-      {
-        finalDate: dateKey,
-        finalDateSetAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      },
+      isCancelling
+        ? {
+            finalDate: "",
+            finalDateSetAt: null,
+            updatedAt: serverTimestamp()
+          }
+        : {
+            finalDate: dateKey,
+            finalDateSetAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          },
       { merge: true }
     ), "Confirm final date");
 
     currentRoomData = {
       ...(currentRoomData || {}),
-      finalDate: dateKey
+      finalDate: isCancelling ? "" : dateKey
     };
     renderFinalDateBanner();
     renderCalendar();
     renderBestDates();
-    statusMessage.textContent = currentLanguage === "ko"
-      ? `최종 날짜가 ${formatFullDateLabel(dateKey)}로 확정되었습니다.`
-      : `Final date confirmed for ${formatFullDateLabel(dateKey)}.`;
+    statusMessage.textContent = isCancelling
+      ? (currentLanguage === "ko" ? "최종 날짜 확정이 취소되었습니다." : "Final date confirmation was cancelled.")
+      : (currentLanguage === "ko"
+          ? `최종 날짜가 ${formatFullDateLabel(dateKey)}로 확정되었습니다.`
+          : `Final date confirmed for ${formatFullDateLabel(dateKey)}.`);
   } catch (error) {
     showError(currentLanguage === "ko" ? "최종 날짜 확정" : "Confirm final date", error);
   }
@@ -1535,6 +1580,9 @@ roomPasswordInput.addEventListener("keydown", async (event) => {
 
 userColorInput.addEventListener("change", saveProfileLocally);
 userNameInput.addEventListener("change", saveProfileLocally);
+newProfileColorInput.addEventListener("change", () => {
+  newProfileColorTouched = true;
+});
 
 prevMonthBtn.addEventListener("click", () => {
   currentMonth -= 1;

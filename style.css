@@ -426,6 +426,13 @@ button:disabled { cursor: not-allowed; opacity: 0.65; }
 .confirm-final-date-btn:hover {
   background: #15803d;
 }
+.confirm-final-date-btn.confirmed {
+  background: #e2e8f0;
+  color: #334155;
+}
+.confirm-final-date-btn.confirmed:hover {
+  background: #cbd5e1;
+}
 .confirm-final-date-btn:disabled {
   background: #bbf7d0;
   color: #166534;
