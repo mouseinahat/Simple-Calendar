@@ -2,7 +2,30 @@
 
 # Simple Calendar — Planned Updates
 
-Current Version: v1.3.0
+Current Version: v1.4.0
+
+---
+
+# Completed - Prompt 14 Three-Level Availability
+
+## Summary
+
+Availability now supports three states:
+
+* Available = 2 points
+* Maybe = 1 point
+* Unavailable = 0 points
+
+Profiles store detailed state in:
+
+```txt
+rooms/{roomId}/profiles/{profileId}
+  availabilityStatus
+```
+
+Legacy `availability` arrays remain supported and are treated as Available dates.
+
+The best-date recommendation now ranks dates by weighted score.
 
 ---
 

@@ -103,6 +103,13 @@ let myProfile = {
   color: "#4f46e5"
 };
 
+const AVAILABILITY_WEIGHTS = {
+  available: 2,
+  maybe: 1,
+  unavailable: 0
+};
+const AVAILABILITY_CYCLE = ["available", "maybe", "unavailable", null];
+
 const translations = {
   ko: {
     heroTitle: "모임 날짜를 함께 고르는 공유 달력",
@@ -162,6 +169,9 @@ const translations = {
     finalDateConfirmedPrefix: "확정 날짜",
     confirmFinalDateBtn: "확정",
     confirmedFinalDateBtn: "확정됨",
+    availableLabel: "가능",
+    maybeLabel: "미정",
+    unavailableLabel: "불가",
     legendHeading: "참여자 색상",
     peopleAvailable: "명 가능",
     emptyRecommendation: "이번 달에는 아직 선택된 가능 날짜가 없습니다.",
@@ -228,6 +238,9 @@ const translations = {
     finalDateConfirmedPrefix: "Confirmed date",
     confirmFinalDateBtn: "Confirm",
     confirmedFinalDateBtn: "Confirmed",
+    availableLabel: "Available",
+    maybeLabel: "Maybe",
+    unavailableLabel: "Unavailable",
     legendHeading: "User colors",
     peopleAvailable: "available",
     emptyRecommendation: "No available dates have been selected for this month yet.",
@@ -376,18 +389,53 @@ async function hashPassword(password) {
 
 function normalizeProfile(documentSnapshot) {
   const data = documentSnapshot.data();
+  const availabilityStatus = normalizeAvailabilityStatus(data);
   return {
     id: data.id || documentSnapshot.id,
     name: data.name || t("unnamed"),
     color: data.color || "#64748b",
     passwordHash: data.passwordHash || "",
-    availability: Array.isArray(data.availability) ? data.availability : (data.dates || [])
+    availabilityStatus,
+    availability: getAvailableDatesFromStatus(availabilityStatus)
   };
 }
 
-function getCurrentProfileDates() {
+function normalizeAvailabilityStatus(data = {}) {
+  const status = {};
+  const rawStatus = data.availabilityStatus && typeof data.availabilityStatus === "object"
+    ? data.availabilityStatus
+    : {};
+
+  Object.entries(rawStatus).forEach(([dateKey, value]) => {
+    if (Object.prototype.hasOwnProperty.call(AVAILABILITY_WEIGHTS, value)) {
+      status[dateKey] = value;
+    }
+  });
+
+  const legacyDates = Array.isArray(data.availability) ? data.availability : (data.dates || []);
+  legacyDates.forEach((dateKey) => {
+    if (!status[dateKey]) {
+      status[dateKey] = "available";
+    }
+  });
+
+  return status;
+}
+
+function getAvailableDatesFromStatus(availabilityStatus = {}) {
+  return Object.entries(availabilityStatus)
+    .filter(([, state]) => state === "available")
+    .map(([dateKey]) => dateKey)
+    .sort();
+}
+
+function getCurrentProfileAvailabilityStatus() {
   const currentUser = users.find((user) => user.id === myProfile.id);
-  return new Set(currentUser?.availability || currentUser?.dates || []);
+  return { ...(currentUser?.availabilityStatus || normalizeAvailabilityStatus(currentUser || {})) };
+}
+
+function getCurrentProfileDates() {
+  return new Set(getAvailableDatesFromStatus(getCurrentProfileAvailabilityStatus()));
 }
 
 function getDatesInCurrentMonthByWeekday(weekday) {
@@ -622,13 +670,14 @@ async function createProfile() {
       color,
       passwordHash,
       availability: [],
+      availabilityStatus: {},
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
 
     await withTimeout(setDoc(getProfileDocRef(profileId), profile), "Create profile");
     myProfile = { id: profileId, name, color };
-    selectedProfile = { id: profileId, name, color, passwordHash, availability: [] };
+    selectedProfile = { id: profileId, name, color, passwordHash, availability: [], availabilityStatus: {} };
     localStorage.setItem(getRoomProfileStorageKey(), profileId);
     newProfileNameInput.value = "";
     newProfilePasswordInput.value = "";
@@ -650,13 +699,15 @@ function saveProfileLocally() {
   myProfile.color = userColorInput.value;
 }
 
-function applyProfileOptimistically(availability) {
+function applyProfileOptimistically(availabilityStatus) {
   const existingIndex = users.findIndex((user) => user.id === myProfile.id);
+  const availability = getAvailableDatesFromStatus(availabilityStatus);
   const nextProfile = {
     id: myProfile.id,
     name: myProfile.name,
     color: myProfile.color,
     passwordHash: selectedProfile?.passwordHash || "",
+    availabilityStatus,
     availability
   };
 
@@ -667,7 +718,7 @@ function applyProfileOptimistically(availability) {
   }
 }
 
-async function saveProfileToFirestore(extraDates = null, options = {}) {
+async function saveProfileToFirestore(extraAvailabilityStatus = null, options = {}) {
   try {
     if (!isRoomUnlocked || !myProfile.id) {
       statusMessage.textContent = currentLanguage === "ko" ? "저장하기 전에 프로필을 먼저 열어주세요." : "Open a profile before saving.";
@@ -682,10 +733,13 @@ async function saveProfileToFirestore(extraDates = null, options = {}) {
     }
 
     const currentUser = users.find((user) => user.id === myProfile.id);
-    const existingDates = currentUser?.availability || currentUser?.dates || [];
-    const availability = extraDates || existingDates;
+    const existingStatus = currentUser?.availabilityStatus || normalizeAvailabilityStatus(currentUser || {});
+    const availabilityStatus = Array.isArray(extraAvailabilityStatus)
+      ? Object.fromEntries(extraAvailabilityStatus.map((dateKey) => [dateKey, "available"]))
+      : (extraAvailabilityStatus || existingStatus);
+    const availability = getAvailableDatesFromStatus(availabilityStatus);
 
-    applyProfileOptimistically(availability);
+    applyProfileOptimistically(availabilityStatus);
     updateActiveProfileDisplay();
     renderCalendar();
     renderLegend();
@@ -698,6 +752,7 @@ async function saveProfileToFirestore(extraDates = null, options = {}) {
         id: myProfile.id,
         name: myProfile.name,
         color: myProfile.color,
+        availabilityStatus,
         availability,
         updatedAt: serverTimestamp()
       },
@@ -734,7 +789,8 @@ async function updateProfilePassword() {
 
     saveProfileLocally();
     const currentUser = users.find((user) => user.id === myProfile.id);
-    const availability = currentUser?.availability || currentUser?.dates || [];
+    const availabilityStatus = currentUser?.availabilityStatus || normalizeAvailabilityStatus(currentUser || {});
+    const availability = getAvailableDatesFromStatus(availabilityStatus);
     const passwordHash = await hashPassword(password);
 
     selectedProfile = {
@@ -743,10 +799,11 @@ async function updateProfilePassword() {
       name: myProfile.name,
       color: myProfile.color,
       passwordHash,
+      availabilityStatus,
       availability
     };
 
-    applyProfileOptimistically(availability);
+    applyProfileOptimistically(availabilityStatus);
     await withTimeout(setDoc(
       getProfileDocRef(),
       {
@@ -754,6 +811,7 @@ async function updateProfilePassword() {
         name: myProfile.name,
         color: myProfile.color,
         passwordHash,
+        availabilityStatus,
         availability,
         updatedAt: serverTimestamp()
       },
@@ -830,26 +888,25 @@ async function toggleBulkDatesInMyCalendar(targetDates, label) {
       return;
     }
 
-    const dates = getCurrentProfileDates();
+    const availabilityStatus = getCurrentProfileAvailabilityStatus();
+    const dates = new Set(getAvailableDatesFromStatus(availabilityStatus));
     const allSelected = targetDates.every((dateKey) => dates.has(dateKey));
 
     targetDates.forEach((dateKey) => {
       if (allSelected) {
-        dates.delete(dateKey);
+        delete availabilityStatus[dateKey];
       } else {
-        dates.add(dateKey);
+        availabilityStatus[dateKey] = "available";
       }
     });
 
-    const sortedDates = Array.from(dates).sort();
-
-    applyProfileOptimistically(sortedDates);
+    applyProfileOptimistically(availabilityStatus);
     renderCalendar();
     renderLegend();
     renderBestDates();
     updateQuickSelectButtonStates();
 
-    await saveProfileToFirestore(sortedDates, { silent: true });
+    await saveProfileToFirestore(availabilityStatus, { silent: true });
     statusMessage.textContent = allSelected
       ? (currentLanguage === "ko" ? `${label} 날짜가 해제되었습니다.` : `${label} dates were deselected.`)
       : (currentLanguage === "ko" ? `${label} 날짜가 선택되었습니다.` : `${label} dates were selected.`);
@@ -1011,12 +1068,14 @@ function startRoomProfileListeners() {
     const legacyProfiles = snapshot.docs
       .map((documentSnapshot) => {
         const data = documentSnapshot.data();
+        const availabilityStatus = normalizeAvailabilityStatus(data);
         return {
           id: data.id || documentSnapshot.id,
           name: data.name || t("unnamed"),
           color: data.color || "#64748b",
           passwordHash: "",
-          availability: data.dates || [],
+          availabilityStatus,
+          availability: getAvailableDatesFromStatus(availabilityStatus),
           legacyOnly: true
         };
       })
@@ -1048,14 +1107,19 @@ function getAvailabilityByDate() {
   const availability = {};
 
   users.forEach((user) => {
-    (user.availability || user.dates || []).forEach((date) => {
+    const availabilityStatus = user.availabilityStatus || normalizeAvailabilityStatus(user);
+    Object.entries(availabilityStatus).forEach(([date, state]) => {
       if (!availability[date]) {
-        availability[date] = [];
+        availability[date] = { score: 0, people: [] };
       }
-      availability[date].push({
+      const weight = AVAILABILITY_WEIGHTS[state] ?? 0;
+      availability[date].score += weight;
+      availability[date].people.push({
         id: user.id,
         name: user.name || t("unnamed"),
-        color: user.color || "#64748b"
+        color: user.color || "#64748b",
+        state,
+        weight
       });
     });
   });
@@ -1069,6 +1133,13 @@ function formatDateLabel(dateKey) {
     month: "long",
     day: "numeric"
   });
+}
+
+function formatAvailabilityState(state) {
+  if (state === "available") return t("availableLabel");
+  if (state === "maybe") return t("maybeLabel");
+  if (state === "unavailable") return t("unavailableLabel");
+  return "";
 }
 
 function formatFullDateLabel(dateKey) {
@@ -1105,8 +1176,10 @@ function renderBestDates() {
       const [year, month] = dateKey.split("-").map(Number);
       return year === currentYear && month === currentMonth + 1;
     })
-    .map(([dateKey, people]) => ({ dateKey, people }))
+    .map(([dateKey, data]) => ({ dateKey, ...data }))
+    .filter((date) => date.score > 0)
     .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
       if (b.people.length !== a.people.length) return b.people.length - a.people.length;
       return a.dateKey.localeCompare(b.dateKey);
     })
@@ -1117,7 +1190,7 @@ function renderBestDates() {
     return;
   }
 
-  rankedDates.forEach(({ dateKey, people }) => {
+  rankedDates.forEach(({ dateKey, people, score }) => {
     const item = document.createElement("li");
     item.className = "best-date-item";
     if (currentRoomData?.finalDate === dateKey) {
@@ -1131,7 +1204,7 @@ function renderBestDates() {
     dateLabel.textContent = formatDateLabel(dateKey);
 
     const countLabel = document.createElement("span");
-    countLabel.textContent = currentLanguage === "ko" ? `${people.length}${t("peopleAvailable")}` : `${people.length} ${t("peopleAvailable")}`;
+    countLabel.textContent = currentLanguage === "ko" ? `${score}점` : `${score} score`;
 
     const confirmButton = document.createElement("button");
     confirmButton.type = "button";
@@ -1151,9 +1224,9 @@ function renderBestDates() {
 
     people.forEach((person) => {
       const pill = document.createElement("span");
-      pill.className = "name-pill";
+      pill.className = `name-pill ${person.state}`;
       pill.style.setProperty("--pill-color", person.color);
-      pill.textContent = person.name;
+      pill.textContent = `${person.name} · ${formatAvailabilityState(person.state)}`;
       names.appendChild(pill);
     });
 
@@ -1239,16 +1312,16 @@ function renderCalendar() {
   }
 
   const availability = getAvailabilityByDate();
-  const dateCounts = Object.fromEntries(
-    Object.entries(availability).map(([date, people]) => [date, people.length])
+  const dateScores = Object.fromEntries(
+    Object.entries(availability).map(([date, data]) => [date, data.score])
   );
-  const currentMonthCounts = Object.entries(dateCounts)
+  const currentMonthScores = Object.entries(dateScores)
     .filter(([dateKey]) => {
       const [year, month] = dateKey.split("-").map(Number);
       return year === currentYear && month === currentMonth + 1;
     })
-    .map(([, count]) => count);
-  const maxCount = Math.max(0, ...currentMonthCounts);
+    .map(([, score]) => score);
+  const maxScore = Math.max(0, ...currentMonthScores);
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateKey = getDateKey(currentYear, currentMonth, day);
@@ -1265,15 +1338,15 @@ function renderCalendar() {
     dayNumber.textContent = day;
     dayCell.appendChild(dayNumber);
 
-    const count = dateCounts[dateKey] || 0;
-    if (count > 0) {
+    const score = dateScores[dateKey] || 0;
+    if (score > 0) {
       const countBadge = document.createElement("div");
       countBadge.className = "availability-count";
-      countBadge.textContent = count;
+      countBadge.textContent = score;
       dayCell.appendChild(countBadge);
     }
 
-    if (count > 0 && count === maxCount) {
+    if (score > 0 && score === maxScore) {
       dayCell.classList.add("best-day");
     }
 
@@ -1286,15 +1359,18 @@ function renderCalendar() {
     dotContainer.className = "color-dots";
 
     users.forEach((user) => {
-      if ((user.availability || user.dates || []).includes(dateKey)) {
+      const availabilityStatus = user.availabilityStatus || normalizeAvailabilityStatus(user);
+      const state = availabilityStatus[dateKey];
+      if (state) {
         const dot = document.createElement("span");
-        dot.className = "color-dot";
-        dot.title = user.name;
+        dot.className = `color-dot ${state}`;
+        dot.title = `${user.name} · ${formatAvailabilityState(state)}`;
         dot.style.backgroundColor = user.color;
         dotContainer.appendChild(dot);
 
         if (user.id === myProfile.id) {
           dayCell.classList.add("mine");
+          dayCell.classList.add(`mine-${state}`);
           dayCell.style.setProperty("--my-color", user.color);
         }
       }
@@ -1308,14 +1384,17 @@ function renderCalendar() {
         return;
       }
 
-      const dates = getCurrentProfileDates();
-      if (dates.has(dateKey)) {
-        dates.delete(dateKey);
+      const availabilityStatus = getCurrentProfileAvailabilityStatus();
+      const currentState = availabilityStatus[dateKey] || null;
+      const nextState = AVAILABILITY_CYCLE[(AVAILABILITY_CYCLE.indexOf(currentState) + 1) % AVAILABILITY_CYCLE.length];
+
+      if (nextState) {
+        availabilityStatus[dateKey] = nextState;
       } else {
-        dates.add(dateKey);
+        delete availabilityStatus[dateKey];
       }
 
-      await saveProfileToFirestore(Array.from(dates).sort());
+      await saveProfileToFirestore(availabilityStatus);
     });
 
     calendarGrid.appendChild(dayCell);

@@ -83,7 +83,7 @@ Each participant can:
 * Edit their name and personal color
 * Set or change their profile password
 * Delete their profile when it is no longer needed
-* Select available dates
+* Mark dates as Available, Maybe, or Unavailable
 
 Availability is displayed directly on the shared calendar.
 
@@ -91,26 +91,30 @@ Profiles are stored in Firestore under:
 
 ```txt
 rooms/{roomId}/profiles/{profileId}
+  availabilityStatus
+  availability
 ```
 
 Profile passwords are stored as SHA-256 hashes, not plaintext.
+Legacy `availability` arrays remain supported and are treated as Available dates.
 
 ---
 
 ## Best Date Recommendation
 
-The application automatically calculates:
+The application uses weighted availability scoring:
 
-* Number of available users per date
-* Most popular dates
+* Available = 2
+* Maybe = 1
+* Unavailable = 0
 * Ranked recommendations
 
 Example:
 
 ```txt
-1. June 13 — 5 people available
-2. June 14 — 4 people available
-3. June 20 — 3 people available
+1. June 13 - 8 score
+2. June 14 - 6 score
+3. June 20 - 4 score
 ```
 
 ---
@@ -210,20 +214,20 @@ Simple-Calendar/
 # Current Version
 
 ```txt
-v1.3.0
+v1.4.0
 ```
 
 ---
 
 # Planned Features
 
-## Prompt 14
+## Prompt 15
 
-Three-Level Availability
+Date Notes
 
-* Available / Maybe / Unavailable states
-* Weighted best-date scoring
-* Preserve existing recommendations
+* Per-date notes
+* Display author and timestamp
+* Real-time sync
 
 ---
 
