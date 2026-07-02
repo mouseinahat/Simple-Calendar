@@ -1142,6 +1142,13 @@ function formatAvailabilityState(state) {
   return "";
 }
 
+function formatAvailabilitySymbol(state) {
+  if (state === "available") return "O";
+  if (state === "maybe") return "?";
+  if (state === "unavailable") return "X";
+  return "";
+}
+
 function formatFullDateLabel(dateKey) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, month - 1, day).toLocaleDateString(currentLanguage === "ko" ? "ko-KR" : "en-US", {
@@ -1372,6 +1379,12 @@ function renderCalendar() {
           dayCell.classList.add("mine");
           dayCell.classList.add(`mine-${state}`);
           dayCell.style.setProperty("--my-color", user.color);
+
+          const myStatusBadge = document.createElement("span");
+          myStatusBadge.className = `my-status-badge ${state}`;
+          myStatusBadge.textContent = formatAvailabilitySymbol(state);
+          myStatusBadge.title = formatAvailabilityState(state);
+          dayCell.appendChild(myStatusBadge);
         }
       }
     });
