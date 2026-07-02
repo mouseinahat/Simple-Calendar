@@ -68,8 +68,10 @@ const userControls = document.getElementById("userControls");
 const lockedNotice = document.getElementById("lockedNotice");
 const langKoBtn = document.getElementById("langKoBtn");
 const langEnBtn = document.getElementById("langEnBtn");
+const languageSelect = document.getElementById("languageSelect");
 const profileAccessPanel = document.getElementById("profileAccessPanel");
 const profileList = document.getElementById("profileList");
+const profileSearchInput = document.getElementById("profileSearchInput");
 const profileLoginPanel = document.getElementById("profileLoginPanel");
 const selectedProfileName = document.getElementById("selectedProfileName");
 const profilePasswordInput = document.getElementById("profilePassword");
@@ -78,6 +80,8 @@ const newProfileNameInput = document.getElementById("newProfileName");
 const newProfilePasswordInput = document.getElementById("newProfilePassword");
 const newProfileColorInput = document.getElementById("newProfileColor");
 const createProfileBtn = document.getElementById("createProfileBtn");
+const createProfilePanel = document.getElementById("createProfilePanel");
+const toggleCreateProfileBtn = document.getElementById("toggleCreateProfileBtn");
 const activeProfileName = document.getElementById("activeProfileName");
 const switchProfileBtn = document.getElementById("switchProfileBtn");
 
@@ -118,8 +122,8 @@ const PROFILE_COLOR_PALETTE = [
 
 const translations = {
   ko: {
-    heroTitle: "모임 날짜를 함께 고르는 공유 달력",
-    heroSubtitle: "방을 만들고 링크와 비밀번호를 공유하세요. 각자 가능한 날짜를 자기 색으로 표시하면 가장 많이 겹치는 날짜를 바로 볼 수 있습니다.",
+    heroTitle: "공유 달력",
+    heroSubtitle: "링크와 비밀번호로 모임 날짜를 함께 고르세요.",
     currentRoomEyebrow: "현재 방",
     noRoom: "방 없음",
     copyRoomLinkBtn: "방 링크 복사",
@@ -140,11 +144,14 @@ const translations = {
     lockedDefault: "새 방을 만들거나 공유받은 링크를 열어주세요.",
     profileAccessHeading: "프로필 선택",
     profileAccessHelp: "이 방에서 사용할 프로필을 선택하거나 새로 만드세요.",
+    profileSearchLabel: "프로필 검색",
+    profileSearchPlaceholder: "이름으로 검색",
     profileLoginHeading: "프로필 비밀번호",
     profilePasswordLabel: "프로필 비밀번호",
     profilePasswordPlaceholder: "프로필 비밀번호 입력",
     loginProfileBtn: "프로필 열기",
     createProfileHeading: "새 프로필 만들기",
+    createProfileToggleBtn: "새 프로필 만들기",
     newProfileNameLabel: "이름",
     newProfileNamePlaceholder: "이름 입력",
     newProfilePasswordLabel: "프로필 비밀번호",
@@ -184,12 +191,12 @@ const translations = {
     emptyRecommendation: "이번 달에는 아직 선택된 가능 날짜가 없습니다.",
     noParticipants: "아직 이 방에 참여자가 없습니다.",
     unnamed: "이름 없음",
-    selectProfileButton: "선택",
-    noProfiles: "아직 프로필이 없습니다. 새 프로필을 만들어 시작하세요."
+    noProfiles: "아직 프로필이 없습니다. 새 프로필을 만들어 시작하세요.",
+    noProfileMatches: "검색 결과가 없습니다."
   },
   en: {
-    heroTitle: "A shared calendar for choosing meeting dates",
-    heroSubtitle: "Create a room, share the link and password, and let everyone mark available dates in their own color. The best overlapping dates are highlighted automatically.",
+    heroTitle: "Shared Calendar",
+    heroSubtitle: "Pick a meeting date together with a link and password.",
     currentRoomEyebrow: "Current Room",
     noRoom: "No room",
     copyRoomLinkBtn: "Copy room link",
@@ -210,11 +217,14 @@ const translations = {
     lockedDefault: "Create a new room or open a shared room link.",
     profileAccessHeading: "Choose profile",
     profileAccessHelp: "Choose an existing room profile or create a new one.",
+    profileSearchLabel: "Search profiles",
+    profileSearchPlaceholder: "Search by name",
     profileLoginHeading: "Profile password",
     profilePasswordLabel: "Profile password",
     profilePasswordPlaceholder: "Enter profile password",
     loginProfileBtn: "Open profile",
     createProfileHeading: "Create New Profile",
+    createProfileToggleBtn: "Create New Profile",
     newProfileNameLabel: "Name",
     newProfileNamePlaceholder: "Enter name",
     newProfilePasswordLabel: "Profile password",
@@ -254,8 +264,8 @@ const translations = {
     emptyRecommendation: "No available dates have been selected for this month yet.",
     noParticipants: "No participants in this room yet.",
     unnamed: "Unnamed",
-    selectProfileButton: "Select",
-    noProfiles: "No profiles yet. Create a profile to start."
+    noProfiles: "No profiles yet. Create a profile to start.",
+    noProfileMatches: "No matching profiles."
   }
 };
 
@@ -313,6 +323,7 @@ function applyLanguage(language) {
 
   langKoBtn?.classList.toggle("active", language === "ko");
   langEnBtn?.classList.toggle("active", language === "en");
+  if (languageSelect) languageSelect.value = language;
 
   [
     "heroTitle", "heroSubtitle", "currentRoomEyebrow", "copyRoomLinkBtn",
@@ -320,7 +331,8 @@ function applyLanguage(language) {
     "openLinkHeading", "sharedLinkLabel", "openRoomBtn", "passwordHeading",
     "passwordHelp", "roomPasswordLabel", "unlockRoomBtn", "profileAccessHeading",
     "profileAccessHelp", "profileLoginHeading", "profilePasswordLabel",
-    "loginProfileBtn", "createProfileHeading", "newProfileNameLabel",
+    "loginProfileBtn", "profileSearchLabel", "toggleCreateProfileBtn",
+    "createProfileHeading", "newProfileNameLabel",
     "newProfilePasswordLabel", "newProfileColorLabel", "createProfileBtn",
     "activeProfileEyebrow", "switchProfileBtn", "myNameLabel", "myColorLabel",
     "saveProfileBtn", "updateProfilePasswordBtn", "profilePasswordUpdateLabel",
@@ -332,6 +344,7 @@ function applyLanguage(language) {
   setPlaceholder("newRoomPassword", t("newRoomPasswordPlaceholder"));
   setPlaceholder("roomPassword", t("roomPasswordPlaceholder"));
   setPlaceholder("profilePassword", t("profilePasswordPlaceholder"));
+  setPlaceholder("profileSearchInput", t("profileSearchPlaceholder"));
   setPlaceholder("newProfileName", t("newProfileNamePlaceholder"));
   setPlaceholder("newProfilePassword", t("newProfilePasswordPlaceholder"));
   setPlaceholder("userName", t("userNamePlaceholder"));
@@ -457,6 +470,11 @@ function updateNewProfileColorDefault() {
   newProfileColorInput.value = getNextAvailableProfileColor();
 }
 
+function updateEntryModeClass() {
+  document.body.classList.toggle("invited-room-mode", Boolean(currentRoomId && !isRoomUnlocked));
+  document.body.classList.toggle("room-unlocked-mode", isRoomUnlocked);
+}
+
 function getDatesInCurrentMonthByWeekday(weekday) {
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const dates = [];
@@ -552,6 +570,7 @@ function setLockedUI(message = "Open a room before editing the calendar.") {
   renderCalendar();
   renderLegend();
   renderFinalDateBanner();
+  updateEntryModeClass();
 }
 
 function setRoomUnlockedUI() {
@@ -564,6 +583,9 @@ function setRoomUnlockedUI() {
   profileAccessPanel.classList.remove("hidden");
   passwordPanel.classList.add("hidden");
   lockedNotice.classList.add("hidden");
+  if (profileSearchInput) profileSearchInput.value = "";
+  setCreateProfilePanelOpen(false);
+  updateEntryModeClass();
 }
 
 function setProfileUnlockedUI() {
@@ -580,6 +602,7 @@ function setProfileUnlockedUI() {
   renderBestDates();
   renderFinalDateBanner();
   updateQuickSelectButtonStates();
+  updateEntryModeClass();
 }
 
 function renderProfileList() {
@@ -593,11 +616,23 @@ function renderProfileList() {
     return;
   }
 
-  users.forEach((profile) => {
+  const searchTerm = (profileSearchInput?.value || "").trim().toLowerCase();
+  const visibleProfiles = searchTerm
+    ? users.filter((profile) => String(profile.name || "").toLowerCase().includes(searchTerm))
+    : users;
+
+  if (visibleProfiles.length === 0) {
+    profileList.innerHTML = `<p class="status">${t("noProfileMatches")}</p>`;
+    updateNewProfileColorDefault();
+    return;
+  }
+
+  visibleProfiles.forEach((profile) => {
     const item = document.createElement("button");
     item.className = "profile-list-item";
     item.type = "button";
     item.dataset.profileId = profile.id;
+    item.setAttribute("aria-label", profile.name || t("unnamed"));
 
     const dot = document.createElement("span");
     dot.className = "legend-dot";
@@ -606,15 +641,16 @@ function renderProfileList() {
     const name = document.createElement("strong");
     name.textContent = profile.name || t("unnamed");
 
-    const action = document.createElement("span");
-    action.textContent = t("selectProfileButton");
-
     item.appendChild(dot);
     item.appendChild(name);
-    item.appendChild(action);
     profileList.appendChild(item);
   });
   updateNewProfileColorDefault();
+}
+
+function setCreateProfilePanelOpen(isOpen) {
+  createProfilePanel?.classList.toggle("hidden", !isOpen);
+  toggleCreateProfileBtn?.setAttribute("aria-expanded", String(isOpen));
 }
 
 function chooseProfileForLogin(profileId) {
@@ -704,6 +740,7 @@ async function createProfile() {
     newProfilePasswordInput.value = "";
     newProfileColorTouched = false;
     updateNewProfileColorDefault();
+    setCreateProfilePanelOpen(false);
     setProfileUnlockedUI();
     statusMessage.textContent = currentLanguage === "ko" ? "새 프로필이 만들어졌습니다." : "New profile created.";
   } catch (error) {
@@ -1461,6 +1498,9 @@ function renderCalendar() {
 
 langKoBtn?.addEventListener("click", () => applyLanguage("ko"));
 langEnBtn?.addEventListener("click", () => applyLanguage("en"));
+languageSelect?.addEventListener("change", (event) => {
+  applyLanguage(event.target.value);
+});
 createRoomBtn.addEventListener("click", createRoom);
 
 copyRoomLinkBtn.addEventListener("click", async () => {
@@ -1518,11 +1558,18 @@ profileList.addEventListener("click", (event) => {
   chooseProfileForLogin(item.dataset.profileId);
 });
 
+profileSearchInput?.addEventListener("input", renderProfileList);
+
 loginProfileBtn.addEventListener("click", loginSelectedProfile);
 profilePasswordInput.addEventListener("keydown", async (event) => {
   if (event.key === "Enter") await loginSelectedProfile();
 });
 createProfileBtn.addEventListener("click", createProfile);
+toggleCreateProfileBtn?.addEventListener("click", () => {
+  const isOpen = createProfilePanel?.classList.contains("hidden");
+  setCreateProfilePanelOpen(Boolean(isOpen));
+  if (isOpen) newProfileNameInput.focus();
+});
 
 switchProfileBtn.addEventListener("click", () => {
   myProfile = { id: "", name: "", color: "#4f46e5" };

@@ -111,9 +111,17 @@ h2 { letter-spacing: -0.02em; }
   margin-bottom: 4px;
 }
 
+.profile-search-field {
+  margin-top: 2px;
+}
+
 .profile-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  max-height: 344px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .profile-list-item {
@@ -134,11 +142,10 @@ h2 { letter-spacing: -0.02em; }
 .profile-list-item strong {
   flex: 1;
   font-size: 16px;
-}
-
-.profile-list-item span:last-child {
-  color: var(--primary-dark);
-  font-weight: 900;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-login-panel,
@@ -148,6 +155,7 @@ h2 { letter-spacing: -0.02em; }
   border-top: 1px solid var(--line);
 }
 
+.create-profile-toggle,
 .create-profile-panel button,
 .active-profile-row button {
   min-height: 46px;
@@ -155,6 +163,11 @@ h2 { letter-spacing: -0.02em; }
   padding: 0 18px;
   background: var(--primary);
   color: #fff;
+}
+
+.create-profile-toggle.secondary {
+  background: #e2e8f0;
+  color: #334155;
 }
 
 .active-profile-row button.secondary {
@@ -170,7 +183,8 @@ label {
   color: #334155;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 48px;
   border: 1px solid #cbd5e1;
@@ -180,7 +194,8 @@ input {
   background: #fff;
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: 3px solid rgba(79, 70, 229, 0.18);
   border-color: var(--primary);
 }
@@ -489,37 +504,150 @@ button:disabled { cursor: not-allowed; opacity: 0.65; }
   .color-dot { width: 12px; height: 12px; }
 }
 
-/* Step 8 polish: larger language switch */
 .hero-top-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 20px;
 }
-.language-switch {
+
+.hero-tools {
   display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
-  gap: 8px;
-  padding: 6px;
+  gap: 10px;
+}
+
+.help-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #fff;
+  color: var(--primary-dark);
+  font-weight: 900;
+  text-decoration: none;
 }
-.language-switch button {
+
+.language-field {
+  min-width: 132px;
+}
+
+.language-field select {
   min-height: 40px;
   border-radius: 999px;
-  padding: 0 14px;
-  background: transparent;
-  color: #475569;
+  font-weight: 800;
 }
-.language-switch button.active {
-  background: var(--primary);
-  color: #fff;
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
+
+.control-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.room-box { order: 1; }
+.setup-grid { order: 2; }
+.password-panel { order: 3; }
+.locked-notice { order: 4; }
+.profile-card { order: 5; }
+#userControls { order: 6; }
+
+.invited-room-mode .password-panel {
+  order: 1;
+  margin-top: 0;
+}
+
+.invited-room-mode .room-box {
+  order: 2;
+  margin-top: 12px;
+}
+
+.invited-room-mode .locked-notice { order: 3; }
+.invited-room-mode .profile-card { order: 4; }
+.invited-room-mode .setup-grid { order: 6; }
+.invited-room-mode .open-link-card { display: none; }
+
+.invited-room-mode .create-room-card {
+  padding: 14px;
+  background: #fff;
+}
+
+.room-unlocked-mode #profileAccessPanel,
+.room-unlocked-mode #userControls {
+  order: 1;
+}
+
+.room-unlocked-mode .room-box {
+  order: 5;
+  margin-top: 16px;
+}
+
+.room-unlocked-mode .setup-grid {
+  order: 6;
+}
+
+.help-page .panel {
+  margin-bottom: 16px;
+}
+
+.help-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 22px;
+  color: #334155;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
 @media (max-width: 760px) {
-  .hero-top-row { flex-direction: column; }
-  .language-switch { width: 100%; }
-  .language-switch button { flex: 1; }
+  .hero-top-row {
+    align-items: center;
+  }
+
+  .hero-title-group {
+    min-width: 0;
+  }
+
+  .hero-title-group .subtitle {
+    font-size: 14px;
+  }
+
+  .hero-tools {
+    margin-left: auto;
+  }
+
+  .language-field {
+    min-width: 112px;
+  }
+
+  .profile-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 340px;
+  }
+
+  .profile-list-item {
+    min-height: 62px;
+    padding: 12px 10px;
+  }
+
+  .profile-list-item strong {
+    font-size: 15px;
+  }
 }
 
 

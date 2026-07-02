@@ -10,14 +10,20 @@
   <main class="app">
     <section class="hero-panel">
       <div class="hero-top-row">
-        <div>
+        <div class="hero-title-group">
           <p class="eyebrow">Simple Calendar</p>
           <h1 id="heroTitle">모임 날짜를 함께 고르는 공유 달력</h1>
           <p id="heroSubtitle" class="subtitle">방을 만들고 링크와 비밀번호를 공유하세요. 각자 가능한 날짜를 자기 색으로 표시하면 가장 많이 겹치는 날짜를 바로 볼 수 있습니다.</p>
         </div>
-        <div class="language-switch" aria-label="Language selection">
-          <button id="langKoBtn" type="button">한국어</button>
-          <button id="langEnBtn" type="button">English</button>
+        <div class="hero-tools" aria-label="Page tools">
+          <a id="helpLink" class="help-link" href="./help.html">?</a>
+          <label class="language-field">
+            <span class="sr-only">Language</span>
+            <select id="languageSelect" aria-label="Language selection">
+              <option value="ko">한국어</option>
+              <option value="en">English</option>
+            </select>
+          </label>
         </div>
       </div>
     </section>
@@ -35,7 +41,7 @@
       </div>
 
       <div class="setup-grid">
-        <section class="mini-card">
+        <section class="mini-card create-room-card">
           <h2 id="createRoomHeading">새 방 만들기</h2>
           <label>
             <span id="roomTitleLabel">방 제목</span>
@@ -48,7 +54,7 @@
           <button id="createRoomBtn" type="button">새 방 만들기</button>
         </section>
 
-        <section class="mini-card">
+        <section class="mini-card open-link-card">
           <h2 id="openLinkHeading">링크로 열기</h2>
           <label>
             <span id="sharedLinkLabel">공유받은 방 링크</span>
@@ -80,6 +86,11 @@
           </div>
         </div>
 
+        <label class="profile-search-field">
+          <span id="profileSearchLabel">프로필 검색</span>
+          <input id="profileSearchInput" type="search" autocomplete="off" placeholder="이름으로 검색" />
+        </label>
+
         <div id="profileList" class="profile-list"></div>
 
         <div id="profileLoginPanel" class="profile-login-panel hidden">
@@ -94,7 +105,9 @@
           </div>
         </div>
 
-        <div class="create-profile-panel">
+        <button id="toggleCreateProfileBtn" type="button" class="secondary create-profile-toggle">새 프로필 만들기</button>
+
+        <div id="createProfilePanel" class="create-profile-panel hidden">
           <h3 id="createProfileHeading">새 프로필 만들기</h3>
           <div class="form-grid profile-create-grid">
             <label>
@@ -191,6 +204,6 @@
     </section>
   </main>
 
-  <script type="module" src="script.js?v=141"></script>
+  <script type="module" src="script.js?v=142"></script>
 </body>
 </html>
